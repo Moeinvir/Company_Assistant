@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceRole {
+  owner
+  admin
+  member
+}
+
+enum WorkspacePlan {
+  trial
+  team
+  scale
+}
+
+enum DocumentSource {
+  file
+  url
+  text
+}
+
+enum DocumentStatus {
+  queued
+  processing
+  indexed
+  failed
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memberships  Membership[]
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenId   String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Workspace {
+  id            String                @id @default(cuid())
+  name          String
+  slug          String                @unique
+  plan          WorkspacePlan         @default(trial)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  memberships   Membership[]
+  assistants    Assistant[]
+  knowledgeBases KnowledgeBase[]
+  documents     Document[]
+  providerCredentials ProviderCredential[]
+  activities    ActivityEvent[]
+  conversations Conversation[]
+  usageEvents   UsageEvent[]
+}
+
+model Membership {
+  userId      String
+  workspaceId String
+  role        WorkspaceRole @default(member)
+  joinedAt    DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, workspaceId])
+  @@index([workspaceId, role])
+}
+
+model Assistant {
+  id                String                  @id @default(cuid())
+  workspaceId       String
+  name              String
+  description       String                  @default("")
+  status            String                  @default("draft")
+  systemPrompt      String                  @db.Text
+  model             Json
+  tone              Json?
+  embedding         Json
+  rag               Json
+  widget            Json
+  publicKey         String                  @unique @default(cuid())
+  stats             Json
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  workspace         Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  knowledgeBindings AssistantKnowledgeBase[]
+  conversations     Conversation[]
+  usageEvents       UsageEvent[]
+
+  @@index([workspaceId, updatedAt])
+}
+
+model AssistantKnowledgeBase {
+  assistantId    String
+  knowledgeBaseId String
+  assistant      Assistant    @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  knowledgeBase  KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+
+  @@id([assistantId, knowledgeBaseId])
+  @@index([knowledgeBaseId])
+}
+
+model KnowledgeBase {
+  id          String                  @id @default(cuid())
+  workspaceId String
+  name        String
+  description String                  @default("") @db.Text
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  workspace   Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  documents   Document[]
+  assistants  AssistantKnowledgeBase[]
+
+  @@index([workspaceId, updatedAt])
+}
+
+model Document {
+  id                String         @id @default(cuid())
+  workspaceId       String
+  knowledgeBaseId   String
+  name              String
+  source            DocumentSource
+  sourceUrl         String?
+  mimeType          String         @default("text/plain")
+  sizeBytes         Int            @default(0)
+  characters        Int            @default(0)
+  status            DocumentStatus @default(queued)
+  progress          Float          @default(0)
+  chunkCount        Int            @default(0)
+  tokenEstimate     Int            @default(0)
+  embeddingProvider String         @default("local")
+  embeddingModel    String         @default("local-hash-384")
+  error             String?        @db.Text
+  content           String         @db.Text
+  indexedAt         DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  workspace         Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  knowledgeBase     KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, knowledgeBaseId, createdAt])
+  @@index([knowledgeBaseId, status])
+}
+
+model ProviderCredential {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  provider      String
+  encryptedKey  String   @db.Text
+  iv            String
+  authTag       String
+  maskedKey     String
+  baseUrl       String?
+  status        String   @default("configured")
+  lastCheckedAt DateTime?
+  note          String?
+  updatedAt     DateTime @updatedAt
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, provider])
+  @@index([workspaceId, updatedAt])
+}
+
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  workspaceId String
+  at        DateTime @default(now())
+  kind      String
+  summary   String
+  detail    String?
+  actor     String
+  isSample  Boolean  @default(false)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, at])
+}
+
+model Conversation {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  assistantId  String
+  title        String
+  channel      String    @default("playground")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assistant    Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  @@index([workspaceId, updatedAt])
+  @@index([assistantId, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           String
+  content        String       @db.Text
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  conversation  Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model UsageEvent {
+  id               String   @id @default(cuid())
+  workspaceId      String
+  assistantId      String?
+  kind             String
+  at               DateTime @default(now())
+  latencyMs        Int      @default(0)
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  provider         String?
+  model            String?
+  retrievedCount   Int      @default(0)
+  topScore         Float?
+  isSample         Boolean  @default(false)
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assistant        Assistant? @relation(fields: [assistantId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, at])
+  @@index([assistantId, at])
+}

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pyre
+      POSTGRES_PASSWORD: pyre
+      POSTGRES_DB: pyre
+    ports:
+      - "5432:5432"
+    volumes:
+      - pyre-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pyre -d pyre"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pyre-postgres:
