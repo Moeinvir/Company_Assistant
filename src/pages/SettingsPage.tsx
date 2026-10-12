@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -7,6 +7,7 @@ import {
   Eraser,
   Flame,
   HardDrive,
+  ImagePlus,
   LogOut,
   Server,
   Trash2,
@@ -34,8 +35,10 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader";
 import { FireThemePanel } from "@/features/fire/FireThemePanel";
 import { useSession } from "@/store/session";
+import { useToast } from "@/store/toast";
 import { useWorkspaceData } from "@/store/workspaceData";
 import { formatBytes, formatNumber, formatRelative } from "@/lib/format";
+import { processProfileImage } from "@/lib/profileImage";
 import type { Workspace } from "@/lib/api/types";
 
 type TabId = "workspace" | "appearance" | "data" | "account";
@@ -48,6 +51,7 @@ export default function SettingsPage() {
     workspaces,
     client,
     signOut,
+    updateProfile,
     updateWorkspace,
     removeWorkspace,
     selectWorkspace,
@@ -64,6 +68,10 @@ export default function SettingsPage() {
   const [name, setName] = useState(workspace?.name ?? "");
   const [plan, setPlan] = useState<Workspace["plan"]>(workspace?.plan ?? "trial");
   const [saving, setSaving] = useState(false);
+  const toast = useToast();
+  const pictureInput = useRef<HTMLInputElement | null>(null);
+  const [pictureBusy, setPictureBusy] = useState(false);
+  const [pictureError, setPictureError] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmDeleteWorkspace, setConfirmDeleteWorkspace] = useState(false);
   const [storageNote, setStorageNote] = useState<string | null>(null);
@@ -85,6 +93,39 @@ export default function SettingsPage() {
     const quota = 5 * 1024 * 1024;
     return { bytes, share: Math.min(1, bytes / quota) };
   }, [assistants.length, knowledgeBases.length, activity.length]);
+
+  /** Decode + downscale in the browser, then persist through the API seam. */
+  const savePicture = async (file: File) => {
+    setPictureBusy(true);
+    setPictureError(null);
+    try {
+      const image = await processProfileImage(file);
+      await updateProfile({ image });
+      toast.success("Profile picture saved.", "It stays on this device with the rest of your account.");
+    } catch (caught) {
+      const message = (caught as Error).message;
+      setPictureError(message);
+      toast.error("Could not save the picture", message);
+    } finally {
+      setPictureBusy(false);
+      if (pictureInput.current) pictureInput.current.value = "";
+    }
+  };
+
+  const removePicture = async () => {
+    setPictureBusy(true);
+    setPictureError(null);
+    try {
+      await updateProfile({ image: "" });
+      toast.success("Profile picture removed.");
+    } catch (caught) {
+      const message = (caught as Error).message;
+      setPictureError(message);
+      toast.error("Could not remove the picture", message);
+    } finally {
+      setPictureBusy(false);
+    }
+  };
 
   const tabs: TabDefinition<TabId>[] = [
     { id: "workspace", label: "Workspace", icon: <Building2 className="size-3.5" aria-hidden /> },
@@ -394,7 +435,12 @@ export default function SettingsPage() {
             <CardHeader title="Account" description="The local identity attached to this browser profile." />
             <CardBody>
               <div className="mb-3 flex items-center gap-3">
-                <Avatar name={user?.name ?? "?"} size="lg" />
+                <Avatar
+                  name={user?.name ?? "?"}
+                  size="lg"
+                  src={user?.image}
+                  variant={user?.image ? "image" : "gradient"}
+                />
                 <div className="min-w-0">
                   <p className="truncate text-micro text-ink">{user?.name}</p>
                   <p className="truncate text-2xs text-ink-faint">{user?.email}</p>
@@ -403,6 +449,45 @@ export default function SettingsPage() {
                   {user?.role}
                 </Badge>
               </div>
+
+              <input
+                ref={pictureInput}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                aria-label="Profile picture file"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void savePicture(file);
+                }}
+              />
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  loading={pictureBusy}
+                  disabled={pictureBusy}
+                  iconLeft={<ImagePlus className="size-3.5" aria-hidden />}
+                  onClick={() => pictureInput.current?.click()}
+                >
+                  {user?.image ? "Change picture" : "Upload picture"}
+                </Button>
+                {user?.image ? (
+                  <Button
+                    variant="ghost"
+                    disabled={pictureBusy}
+                    onClick={() => void removePicture()}
+                  >
+                    Remove picture
+                  </Button>
+                ) : null}
+                <p className="text-[10px] text-ink-faint">
+                  PNG, JPEG, WebP or SVG · resized to 320px · stored on this device
+                </p>
+              </div>
+              {pictureError ? (
+                <p className="mb-3 text-2xs text-danger">{pictureError}</p>
+              ) : null}
+
               <dl>
                 <DetailRow label="User ID">
                   <code className="font-mono text-2xs text-ink-mute">{user?.id}</code>

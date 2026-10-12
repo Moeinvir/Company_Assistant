@@ -129,7 +129,7 @@ export default function IntegrationsPage() {
   };
 
   const curlExample = `curl ${typeof window !== "undefined" ? window.location.origin : "https://your-host"}/api/playground/query \\
-  -H "authorization: Bearer $PYRE_TOKEN" \\
+  -H "authorization: Bearer $PARSIS_TOKEN" \\
   -H "content-type: application/json" \\
   -d '{
     "assistantId": "${assistants[0]?.id ?? "ast_…"}",

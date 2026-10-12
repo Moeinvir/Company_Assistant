@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, UseGuards } from "@nestjs/common";
 import { AuthGuard, type AuthenticatedRequest } from "./auth.guard";
 import { AuthService } from "./auth.service";
-import { SignInDto, SignUpDto } from "./auth.dto";
+import { SignInDto, SignUpDto, UpdateProfileDto } from "./auth.dto";
 import { CurrentAuth } from "./current-auth.decorator";
 
 @Controller("auth")
@@ -28,5 +28,14 @@ export class AuthController {
   @UseGuards(AuthGuard)
   signOut(@CurrentAuth() auth: AuthenticatedRequest["auth"]) {
     return this.auth.signOut(auth.tokenId);
+  }
+
+  @Patch("profile")
+  @UseGuards(AuthGuard)
+  updateProfile(
+    @CurrentAuth() auth: AuthenticatedRequest["auth"],
+    @Body() input: UpdateProfileDto,
+  ) {
+    return this.auth.updateProfile(auth.userId, input);
   }
 }

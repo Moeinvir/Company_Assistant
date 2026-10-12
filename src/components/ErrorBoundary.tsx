@@ -19,7 +19,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[pyre] render error", error, info.componentStack);
+    console.error("[parsis] render error", error, info.componentStack);
   }
 
   render() {

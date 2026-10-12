@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   Pyre — centralized design system
+   Parsis Bridge — centralized design system
    Everything visual resolves through tokens declared here. Fire values (hue,
    intensity, glow, density, speed) are runtime variables written by
    src/fire/fireThemes.ts; no component hard-codes an ember color.

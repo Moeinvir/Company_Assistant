@@ -36,7 +36,7 @@ export default function WidgetRuntimePage() {
         setConfig(loaded);
         // Let the host page know the runtime is interactive.
         window.parent?.postMessage(
-          { source: "pyre-widget", type: "ready", assistantId: loaded.assistantId, publicKey },
+          { source: "parsis-widget", type: "ready", assistantId: loaded.assistantId, publicKey },
           "*",
         );
       } catch (caught) {
@@ -53,7 +53,7 @@ export default function WidgetRuntimePage() {
     const report = () => {
       window.parent?.postMessage(
         {
-          source: "pyre-widget",
+          source: "parsis-widget",
           type: "resize",
           height: document.documentElement.scrollHeight,
           width: document.documentElement.scrollWidth,
@@ -110,7 +110,7 @@ export default function WidgetRuntimePage() {
           variant="inline"
           hints={config.hints}
           onClose={() =>
-            window.parent?.postMessage({ source: "pyre-widget", type: "close" }, "*")
+            window.parent?.postMessage({ source: "parsis-widget", type: "close" }, "*")
           }
           send={async (question) => {
             const { response, conversationId: id } = await client.widget.query(config.publicKey, {

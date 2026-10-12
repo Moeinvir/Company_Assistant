@@ -30,6 +30,7 @@ import type {
   QueryResponse,
   SearchRequest,
   SearchResponse,
+  User,
   Workspace,
   WorkspaceMember,
 } from "./types";
@@ -39,6 +40,7 @@ import type {
   BackendEvent,
   Credentials,
   FilePayload,
+  ProfilePatch,
   PublicWidgetConfig,
 } from "./client";
 
@@ -140,6 +142,8 @@ export class HttpClient implements ApiClient {
         writeToken(undefined);
       }
     },
+    updateProfile: (token: string, patch: ProfilePatch) =>
+      this.call<User>("PATCH", "/auth/profile", { token, body: patch as unknown as Json }),
   };
 
   workspaces = {

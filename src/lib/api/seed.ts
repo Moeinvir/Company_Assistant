@@ -33,10 +33,10 @@ export const SAMPLE_KNOWLEDGE_BASES = [
 
 export const SAMPLE_DOCUMENTS: SeedDocument[] = [
   {
-    name: "Pyre platform overview",
+    name: "Parsis Bridge platform overview",
     knowledgeBase: "Product handbook",
     source: "text",
-    content: `Pyre is a workspace for building retrieval-augmented assistants on top of knowledge you already own.
+    content: `Parsis Bridge is a workspace for building retrieval-augmented assistants on top of knowledge you already own.
 An assistant is a configuration object: a model, an embedding model, a system prompt, a retrieval
 policy and one or more knowledge bases. Assistants do not hold their own copy of a document; they
 reference knowledge bases, so a single upload can serve several assistants at once.
@@ -55,8 +55,8 @@ model is instructed to cite the numbers it used. The response metadata records t
 model, the token counts, the number of passages retrieved and the top score, so an answer can always
 be traced back to the evidence behind it.
 
-WHAT PYRE IS NOT
-Pyre does not fine-tune models and it does not store your prompts for training. Retrieval quality
+WHAT PARSIS BRIDGE IS NOT
+Parsis Bridge does not fine-tune models and it does not store your prompts for training. Retrieval quality
 comes from good documents, sensible chunk sizes and an honest relevance threshold, in that order.`,
   },
   {
@@ -119,7 +119,7 @@ way regardless.
 VERIFYING A CONNECTION
 The verify button performs a real request against the provider's models endpoint and reports the
 result verbatim. A 401 means the key was rejected, a 429 means you are rate limited, and a network
-failure usually means the provider does not allow browser origins. Pyre never reports a connection as
+failure usually means the provider does not allow browser origins. Parsis Bridge never reports a connection as
 working when the request did not succeed.
 
 FAILURE BEHAVIOUR
@@ -135,7 +135,7 @@ retrieved passages, and the metadata panel states exactly why.`,
 every vector in the affected knowledge base, so it is a decision worth making early.
 
 THE BUILT-IN EMBEDDER
-Pyre ships a deterministic offline embedder: signed feature hashing over unigrams and bigrams, two
+Parsis Bridge ships a deterministic offline embedder: signed feature hashing over unigrams and bigrams, two
 positions per token to reduce collisions, sublinear term weighting and L2 normalisation so cosine
 similarity is a dot product. It requires no key, no network and no cost, which makes it ideal for
 evaluating chunking and thresholds before you pay for anything. Its weakness is vocabulary: it cannot
@@ -151,13 +151,13 @@ but does not accept browser-origin requests.
 
 DIMENSIONS AND STORAGE
 Higher dimensionality improves discrimination and increases both storage and scan cost. Retrieval in
-Pyre is an exact scan, so doubling the dimensions doubles the work per query. For corpora under a few
+Parsis Bridge is an exact scan, so doubling the dimensions doubles the work per query. For corpora under a few
 hundred thousand passages this stays comfortably interactive; larger corpora want an approximate
 index and a dedicated vector database.
 
 SWITCHING MODELS
 Switching the embedding provider or model on an assistant requires re-indexing its knowledge bases.
-Pyre marks affected documents as stale rather than silently serving vectors from a model that is no
+Parsis Bridge marks affected documents as stale rather than silently serving vectors from a model that is no
 longer configured.`,
   },
   {
@@ -230,7 +230,7 @@ metadata. The metadata panel exposes all of it and can be copied as JSON.`,
     name: "Data isolation and security model",
     knowledgeBase: "Platform engineering",
     source: "text",
-    content: `Every record in Pyre belongs to exactly one workspace, and every read is scoped by the workspace ids
+    content: `Every record in Parsis Bridge belongs to exactly one workspace, and every read is scoped by the workspace ids
 the caller is a member of.
 
 TENANCY

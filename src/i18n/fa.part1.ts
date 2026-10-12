@@ -53,7 +53,7 @@ export const FA_PART1: Array<[string, string]> = [
   ["Open the playground", "رفتن به محیط آزمایش"],
   ["Loading your workspace", "در حال بارگذاری فضای کاری شما"],
   ["AI platform", "پلتفرم هوش مصنوعی"],
-  ["Pyre", "Pyre"],
+  ["Parsis Bridge", "Parsis Bridge"],
   ["sample", "نمونه"],
   ["trial", "آزمایشی"],
   ["assistants", "دستیار"],
@@ -95,7 +95,7 @@ export const FA_PART1: Array<[string, string]> = [
 
   // ── Auth page ─────────────────────────────────────────────────────────
   ["AI intelligence forged in fire.", "هوش مصنوعی، آبدیده در آتش."],
-  ["Pyre is the control room for retrieval-augmented assistants: connect providers, index your documents, tune retrieval and ship the widget — with every answer traceable back to the passages behind it.", "Pyre مرکز کنترل دستیارهای مبتنی بر RAG است: ارائه‌دهنده‌ها را وصل کنید، اسنادتان را ایندکس کنید، بازیابی را تنظیم کنید و ویجت را منتشر کنید؛ هر پاسخ به قطعه‌های منبعش قابل ردیابی است."],
+  ["Parsis Bridge is the control room for retrieval-augmented assistants: connect providers, index your documents, tune retrieval and ship the widget — with every answer traceable back to the passages behind it.", "Parsis Bridge مرکز کنترل دستیارهای مبتنی بر RAG است: ارائه‌دهنده‌ها را وصل کنید، اسنادتان را ایندکس کنید، بازیابی را تنظیم کنید و ویجت را منتشر کنید؛ هر پاسخ به قطعه‌های منبعش قابل ردیابی است."],
   ["Assistants on your own knowledge", "دستیارهایی بر پایهٔ دانش خودتان"],
   ["Chunk, embed and index documents, then ground every answer in the passages that produced it.", "اسناد را قطعه‌بندی، تبدیل به بردار (Embedding) و ایندکس کنید تا هر پاسخ به قطعه‌های منبع خودش متکی باشد."],
   ["A laboratory, not a chat box", "یک آزمایشگاه، نه فقط یک پنجرهٔ گفت‌وگو"],

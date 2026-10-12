@@ -50,11 +50,11 @@ import type {
   Workspace,
   WorkspaceMember,
 } from "./types";
-import type { ApiClient, AuthResult, BackendEvent, Credentials, FilePayload, PublicWidgetConfig } from "./client";
+import type { ApiClient, AuthResult, BackendEvent, Credentials, FilePayload, ProfilePatch, PublicWidgetConfig } from "./client";
 
 const STORAGE_KEY = "pyre.db.v1";
 const TOKEN_KEY = "pyre.token.v1";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const SESSION_DAYS = 7;
 
 interface StoredUser extends User {
@@ -137,6 +137,38 @@ function emptyDatabase(): Persisted {
 }
 
 /* ------------------------------------------------------------------ helpers */
+
+/**
+ * v1 data predates the rename: anything attributed to the old brand (sample
+ * activity actors, the widget's default branding line, seeded document copy)
+ * is rewritten once so stored workspaces show the current name.
+ */
+function migrateLegacyBrand(db: Persisted): Persisted {
+  const rebrand = (value: string) =>
+    value.replace(/\bPyre\b/g, "Parsis Bridge").replace(/\bPYRE\b/g, "PARSIS BRIDGE");
+  db.activity = db.activity.map((entry) => ({
+    ...entry,
+    actor: rebrand(entry.actor),
+    summary: rebrand(entry.summary),
+    detail: entry.detail ? rebrand(entry.detail) : entry.detail,
+  }));
+  db.assistants = db.assistants.map((assistant) => ({
+    ...assistant,
+    widget: {
+      ...assistant.widget,
+      brandingText: rebrand(assistant.widget.brandingText),
+    },
+  }));
+  db.documents = db.documents.map((document) => ({
+    ...document,
+    name: rebrand(document.name),
+  }));
+  db.documentTexts = Object.fromEntries(
+    Object.entries(db.documentTexts).map(([id, text]) => [id, rebrand(text)]),
+  );
+  db.version = DB_VERSION;
+  return db;
+}
 
 const randomId = (prefix: string) =>
   `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
@@ -273,7 +305,7 @@ export function defaultAssistantDraft(name = "New assistant"): AssistantDraft {
       avatarUrl: "",
       cornerRadius: 16,
       showBranding: true,
-      brandingText: "Powered by Pyre",
+      brandingText: "Powered by Parsis Bridge",
       showSources: true,
       offsetX: 20,
       offsetY: 20,
@@ -385,8 +417,9 @@ export class LocalBackend implements ApiClient {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return emptyDatabase();
       const parsed = JSON.parse(raw) as Persisted;
-      if (!parsed || parsed.version !== DB_VERSION) return emptyDatabase();
-      return { ...emptyDatabase(), ...parsed };
+      if (!parsed || parsed.version > DB_VERSION) return emptyDatabase();
+      const merged = { ...emptyDatabase(), ...parsed };
+      return parsed.version < DB_VERSION ? migrateLegacyBrand(merged) : merged;
     } catch {
       return emptyDatabase();
     }
@@ -416,7 +449,7 @@ export class LocalBackend implements ApiClient {
         this.notes.push(
           "Browser storage is full, so the newest changes may not survive a reload. Remove documents or clear the sample data.",
         );
-        console.warn("[pyre] could not persist local data", error);
+        console.warn("[parsis] could not persist local data", error);
       }
     }
   };
@@ -436,7 +469,7 @@ export class LocalBackend implements ApiClient {
       try {
         entry.handler(event);
       } catch (error) {
-        console.warn("[pyre] subscriber failed", error);
+        console.warn("[parsis] subscriber failed", error);
       }
     }
   }
@@ -528,15 +561,13 @@ export class LocalBackend implements ApiClient {
       ...entry,
     });
     if (this.db.activity.length > 600) this.db.activity.length = 600;
-  }
-
-  /** Sample records are attributed to Pyre rather than the current user. */
+  }    /** Sample records are attributed to Parsis Bridge rather than the current user. */
   private isSampleWorkspace(workspaceId: string) {
     return this.db.workspaces.find((entry) => entry.id === workspaceId)?.isSample ?? false;
   }
 
   private activityActor(workspaceId: string) {
-    return this.isSampleWorkspace(workspaceId) ? "Pyre (sample)" : "You";
+    return this.isSampleWorkspace(workspaceId) ? "Parsis Bridge (sample)" : "You";
   }
 
   private trimQueryLog() {
@@ -768,8 +799,37 @@ export class LocalBackend implements ApiClient {
       email: user.email,
       name: user.name,
       role: user.role,
+      ...(user.image ? { image: user.image } : {}),
       createdAt: user.createdAt,
     };
+  }
+
+  /** Persist profile edits (display name, picture) for the signed-in account. */
+  async updateProfile(token: string, patch: ProfilePatch): Promise<User> {
+    const user = this.userOf(token);
+
+    if (patch.name !== undefined) {
+      const name = patch.name.trim();
+      if (name.length === 0) throw new Error("Enter a display name.");
+      if (name.length > 80) throw new Error("Keep the display name under 80 characters.");
+      user.name = name;
+      // The member directory is a projection of the account, so keep it in step.
+      for (const membership of this.db.memberships) {
+        if (membership.userId === user.id) membership.name = name;
+      }
+    }
+
+    if (patch.image !== undefined) {
+      const image = patch.image.trim();
+      if (image && !/^(https:\/\/|data:image\/)/.test(image)) {
+        throw new Error("That picture is not a valid image URL.");
+      }
+      // Stored as-is: the picture lives with the rest of this device's data.
+      user.image = image || undefined;
+    }
+
+    this.save();
+    return this.publicUser(user);
   }
 
   /* ------------------------------------------------------------- workspaces */
@@ -779,6 +839,7 @@ export class LocalBackend implements ApiClient {
     signIn: (input: { email: string; password: string }) => this.signIn(input),
     restore: (token?: string) => this.restore(token),
     signOut: (token: string) => this.signOut(token),
+    updateProfile: (token: string, patch: ProfilePatch) => this.updateProfile(token, patch),
   };
 
   async listWorkspaces(token: string) {
@@ -2172,7 +2233,7 @@ export class LocalBackend implements ApiClient {
         summary: "Sample workspace created",
         detail: `${SAMPLE_DOCUMENTS.length} documents indexed across ${knowledgeBases.length} knowledge bases`,
       },
-      "Pyre",
+      "Parsis Bridge",
       true,
     );
   }
@@ -2292,7 +2353,7 @@ export class LocalBackend implements ApiClient {
         kind: "document.indexed",
         summary: '"RAG configuration guide" indexed',
         detail: "9 passages · pyre-hash-384",
-        actor: "Pyre (sample)",
+        actor: "Parsis Bridge (sample)",
         isSample: true,
       },
       {
@@ -2302,7 +2363,7 @@ export class LocalBackend implements ApiClient {
         kind: "query.run",
         summary: "Playground query on Support Triage",
         detail: "4 passages · 1.24 s",
-        actor: "Pyre (sample)",
+        actor: "Parsis Bridge (sample)",
         isSample: true,
       },
       {
@@ -2312,7 +2373,7 @@ export class LocalBackend implements ApiClient {
         kind: "assistant.updated",
         summary: 'Assistant "Handbook Guide" updated',
         detail: "rag, widget",
-        actor: "Pyre (sample)",
+        actor: "Parsis Bridge (sample)",
         isSample: true,
       },
     );

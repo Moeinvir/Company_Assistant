@@ -137,7 +137,7 @@ export const FA_PART3: Array<[string, string]> = [
   ["Runs on your machine. The browser talks to 127.0.0.1 — nothing leaves the device.", "روی دستگاه شما اجرا می‌شود. مرورگر با 127.0.0.1 ارتباط می‌گیرد و چیزی از دستگاه خارج نمی‌شود."],
   ["Local runtime", "اجرای محلی"],
   ["Built in", "داخلی"],
-  ["Pyre local embedder", "Embedder محلی Pyre"],
+  ["Parsis Bridge local embedder", "Embedder محلی Parsis Bridge"],
   ["Deterministic hashed bag-of-words vectors. Runs offline with no key and no network — ideal for evaluating retrieval before connecting a vendor.", "بردارهای هش‌شدهٔ کیسه‌کلمات (قطعی). بدون کلید و بدون شبکه و آفلاین اجرا می‌شود؛ برای ارزیابی بازیابی پیش از اتصال به ارائه‌دهنده ایده‌آل است."],
   ["Voyage does not accept browser-origin requests. Route this provider through your platform API in production.", "Voyage درخواست مستقیم از مرورگر را نمی‌پذیرد. در محیط واقعی این ارائه‌دهنده را از طریق API پلتفرم خودتان استفاده کنید."],
   ["no key required", "بدون نیاز به کلید"],
@@ -191,7 +191,7 @@ export const FA_PART3: Array<[string, string]> = [
 /** Sample-workspace feed entries and other generated labels (display only). */
 export const FA_PART4: Array<[string, string]> = [
   ["%", "٪"],
-  ["Pyre — AI intelligence forged in fire", "Pyre — هوش مصنوعی، آبدیده در آتش"],
+  ["Parsis Bridge — AI intelligence forged in fire", "Parsis Bridge — هوش مصنوعی، آبدیده در آتش"],
   ["Knowledge Center", "مرکز دانش"],
   ["Import your knowledge sources to make assistant answers accurate, grounded and traceable.", "منابع دانش‌تان را وارد کنید تا پاسخ‌های دستیار دقیق، مستند و قابل ردیابی باشند."],
   ["Manage your knowledge sources and see every stage of answer preparation.", "منابع دانش را مدیریت کنید و همهٔ مراحل آماده‌سازی پاسخ را ببینید."],
@@ -201,7 +201,7 @@ export const FA_PART4: Array<[string, string]> = [
   ["Create your first knowledge base", "ساخت اولین پایگاه دانش"],
   ["Documents", "اسناد"],
   ["Answer style saved.", "سبک پاسخ ذخیره شد."],
-  ["Pyre (sample)", "Pyre (نمونه)"],
+  ["Parsis Bridge (sample)", "Parsis Bridge (نمونه)"],
   ["Sample workspace created", "فضای کاری نمونه ساخته شد"],
   ["Forge Labs (sample)", "Forge Labs (نمونه)"],
   ["Local workspace", "فضای کاری محلی"],

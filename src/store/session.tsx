@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getApiClient, type ApiClient, type Credentials } from "@/lib/api/client";
+import { getApiClient, type ApiClient, type Credentials, type ProfilePatch } from "@/lib/api/client";
 import type { ProviderId, Session, User, Workspace } from "@/lib/api/types";
 
 const WORKSPACE_KEY = "pyre.workspace.v1";
@@ -25,6 +25,8 @@ interface SessionContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Persists profile edits (name, picture) and refreshes the session user. */
+  updateProfile: (patch: ProfilePatch) => Promise<void>;
   selectWorkspace: (workspaceId: string) => void;
   updateWorkspace: (patch: Partial<Pick<Workspace, "name" | "plan">>) => Promise<void>;
   removeWorkspace: (workspaceId: string) => Promise<void>;
@@ -52,7 +54,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         restored = await api.auth.restore();
       } catch (error) {
         // A broken backend must not leave the app on the loading screen forever.
-        console.warn("[pyre] could not restore the session", error);
+        console.warn("[parsis] could not restore the session", error);
       }
       if (cancelled) return;
       if (restored) {
@@ -134,13 +136,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       await client.auth.signOut(session.token);
     } catch (error) {
-      console.warn("[pyre] sign-out request failed; signing out locally", error);
+      console.warn("[parsis] sign-out request failed; signing out locally", error);
     }
     setSession(null);
     setWorkspaces([]);
     setWorkspaceId(null);
     setCredentials({});
   }, [client, session]);
+
+  const updateProfile = useCallback(
+    async (patch: ProfilePatch) => {
+      if (!client || !session) throw new Error("Still starting up. Try again in a moment.");
+      const user = await client.auth.updateProfile(session.token, patch);
+      setSession((current) => (current ? { ...current, user } : current));
+    },
+    [client, session],
+  );
 
   const selectWorkspace = useCallback((id: string) => {
     setWorkspaceId(id);
@@ -194,6 +205,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      updateProfile,
       selectWorkspace,
       updateWorkspace,
       removeWorkspace,
@@ -209,6 +221,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      updateProfile,
       selectWorkspace,
       updateWorkspace,
       removeWorkspace,

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -9,7 +10,7 @@ import { WorkspacePlan, WorkspaceRole } from "@prisma/client";
 import * as bcrypt from "bcrypt";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
-import { SignInDto, SignUpDto } from "./auth.dto";
+import { SignInDto, SignUpDto, UpdateProfileDto } from "./auth.dto";
 
 const SESSION_DAYS = 7;
 
@@ -87,6 +88,43 @@ export class AuthService {
     await this.prisma.session.deleteMany({ where: { tokenId } });
   }
 
+  /**
+   * Profile edits (display name, picture) for the signed-in account. The
+   * picture is stored as a data URL or an https URL and is never fetched
+   * server-side.
+   */
+  async updateProfile(userId: string, input: UpdateProfileDto) {
+    const image = input.image?.trim();
+    if (input.image !== undefined && image && !/^(https:\/\/|data:image\/)/.test(image)) {
+      throw new BadRequestException("That picture is not a valid image URL");
+    }
+    const name = input.name === undefined ? undefined : input.name.trim();
+    if (input.name !== undefined && !name) throw new BadRequestException("Enter a display name");
+
+    const membership = await this.prisma.membership.findFirst({
+      where: { userId },
+      orderBy: { joinedAt: "asc" },
+      select: { role: true },
+    });
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name !== undefined ? { name } : {}),
+        ...(input.image !== undefined ? { image: image || null } : {}),
+      },
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      ...(user.image ? { image: user.image } : {}),
+      role: membership?.role ?? WorkspaceRole.member,
+      createdAt: user.createdAt.toISOString(),
+    };
+  }
+
   private expiration() {
     return new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
   }
@@ -115,6 +153,7 @@ export class AuthService {
           id: user.id,
           email: user.email,
           name: user.name,
+          ...(user.image ? { image: user.image } : {}),
           role: membership.role,
           createdAt: user.createdAt.toISOString(),
         },

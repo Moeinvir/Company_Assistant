@@ -75,7 +75,7 @@ export function AuthPage() {
     setError(null);
     try {
       const suffix = Math.random().toString(36).slice(2, 8);
-      await signUp("Demo operator", `demo.${suffix}@pyre.local`, `pyre-${suffix}-${suffix}`);
+      await signUp("Demo operator", `demo.${suffix}@parsis.local`, `parsis-${suffix}-${suffix}`);
     } catch (caught) {
       setError((caught as Error).message);
     } finally {
@@ -97,7 +97,7 @@ export function AuthPage() {
             {translate("AI intelligence forged in fire.")}
           </h1>
           <p className="mt-4 max-w-xl text-micro leading-relaxed text-ink-soft">
-            {translate("Pyre is the control room for retrieval-augmented assistants: connect providers, index your documents, tune retrieval and ship the widget — with every answer traceable back to the passages behind it.")}
+            {translate("Parsis Bridge is the control room for retrieval-augmented assistants: connect providers, index your documents, tune retrieval and ship the widget — with every answer traceable back to the passages behind it.")}
           </p>
 
           <dl className="mt-8 grid gap-3 sm:grid-cols-2">

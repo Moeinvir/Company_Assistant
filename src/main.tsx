@@ -15,3 +15,14 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+// Installable app shell: the service worker gives the local-first UI an
+// offline fallback. Registered after load so it never delays first paint,
+// and skipped in dev so it cannot pin stale modules during HMR.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .catch((error) => console.warn("[parsis] service worker registration failed", error));
+  });
+}

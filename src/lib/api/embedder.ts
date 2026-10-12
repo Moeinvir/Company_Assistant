@@ -1,7 +1,7 @@
 /**
  * Embedding layer.
  *
- * `PyreLocalEmbedder` is a genuine, deterministic embedding function: signed
+ * `ParsisLocalEmbedder` is a genuine, deterministic embedding function: signed
  * feature hashing of unigrams and bigrams with sublinear term weighting, L2
  * normalised so cosine similarity is a dot product. It requires no key and no
  * network, which makes retrieval testable offline.

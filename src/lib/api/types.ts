@@ -1,5 +1,5 @@
 /**
- * Domain model for the Pyre platform.
+ * Domain model for the Parsis Bridge platform.
  *
  * These types are the contract between the UI and any backend. `localBackend`
  * (the offline demo store) and a future HTTP backend both satisfy the same
@@ -18,7 +18,8 @@ export type ProviderId =
   | "ollama"
   | "cohere"
   | "voyage"
-  | "local";
+  | "local"
+  | "custom";
 
 export type ProviderCapability = "chat" | "embedding";
 
@@ -58,6 +59,11 @@ export interface User {
   email: string;
   name: string;
   role: "owner" | "admin" | "member";
+  /**
+   * Profile picture. Either a remote https URL or a `data:` URL produced by
+   * the account settings screen (the offline backend stores it as-is).
+   */
+  image?: string;
   createdAt: string;
 }
 
@@ -122,7 +128,11 @@ export interface RagConfig {
 }
 
 export type AssistantStatus = "active" | "draft" | "paused" | "error";
-export type WidgetPosition = "bottom-right" | "bottom-left" | "top-right" | "top-left";
+export type WidgetPosition =
+  | "bottom-right"
+  | "bottom-left"
+  | "top-right"
+  | "top-left";
 export type WidgetTheme = "dark" | "light" | "auto";
 export type LauncherIcon = "spark" | "flame" | "orb" | "chat";
 export type AvatarStyle = "gradient" | "initials" | "image";
@@ -417,7 +427,12 @@ export interface AnalyticsSnapshot {
   };
   series: UsagePoint[];
   byProvider: { provider: ProviderId; queries: number; tokens: number }[];
-  byAssistant: { assistantId: string; name: string; queries: number; tokens: number }[];
+  byAssistant: {
+    assistantId: string;
+    name: string;
+    queries: number;
+    tokens: number;
+  }[];
   latencyBuckets: { bucket: string; count: number }[];
   topQueries: { query: string; count: number; avgScore: number }[];
 }

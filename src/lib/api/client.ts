@@ -28,6 +28,7 @@ import type {
   SearchRequest,
   SearchResponse,
   Session,
+  User,
   WidgetConfig,
   Workspace,
   WorkspaceMember,
@@ -37,6 +38,12 @@ export interface SignUpInput {
   name: string;
   email: string;
   password: string;
+}
+
+/** Edits to the signed-in account. An empty `image` clears the picture. */
+export interface ProfilePatch {
+  name?: string;
+  image?: string;
 }
 
 export interface AuthResult {
@@ -94,6 +101,8 @@ export interface ApiClient {
     signIn(input: { email: string; password: string }): Promise<AuthResult>;
     restore(token?: string): Promise<AuthResult | null>;
     signOut(token: string): Promise<void>;
+    /** Persists profile edits (display name, picture) and returns the user. */
+    updateProfile(token: string, patch: ProfilePatch): Promise<User>;
   };
 
   workspaces: {

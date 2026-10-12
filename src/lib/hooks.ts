@@ -35,7 +35,7 @@ function loop(time: number) {
     try {
       listener(delta, time);
     } catch (error) {
-      console.error("[pyre] animation listener failed", error);
+      console.error("[parsis] animation listener failed", error);
     }
   }
 }

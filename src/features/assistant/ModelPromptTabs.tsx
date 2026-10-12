@@ -21,6 +21,7 @@ import { DraftBar, useAssistantDraft } from "./useAssistantDraft";
 import { useWorkspaceData } from "@/store/workspaceData";
 import type { Assistant, AssistantDraft, ProviderId } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
+import { useChatModels } from "@/lib/useChatModels";
 
 export function ModelTab({
   assistant,
@@ -33,18 +34,43 @@ export function ModelTab({
   const { providerKeys, credentials } = useWorkspaceData();
 
   const definition = PROVIDER_MAP[form.draft.model.provider];
-  const keyRecord = providerKeys.find((entry) => entry.provider === form.draft.model.provider);
-  const hasCredentials = Boolean(credentials[form.draft.model.provider]?.apiKey);
+  const keyRecord = providerKeys.find(
+    (entry) => entry.provider === form.draft.model.provider,
+  );
+  const hasCredentials = Boolean(
+    credentials[form.draft.model.provider]?.apiKey,
+  );
   const needsKey = Boolean(definition?.requiresKey) && !hasCredentials;
 
-  const modelOptions: SelectOption[] = modelsFor(form.draft.model.provider, "chat").map((option) => ({
-    value: option.id,
-    label: `${option.label} · ${(option.contextWindow / 1000).toFixed(0)}K context`,
-  }));
+  // const modelOptions: SelectOption[] = modelsFor(form.draft.model.provider, "chat").map((option) => ({
+  //   value: option.id,
+  //   label: `${option.label} · ${(option.contextWindow / 1000).toFixed(0)}K context`,
+  // }));
 
-  const selected = modelsFor(form.draft.model.provider, "chat").find(
-    (option) => option.id === form.draft.model.model,
-  );
+  // const selected = modelsFor(form.draft.model.provider, "chat").find(
+  //   (option) => option.id === form.draft.model.model,
+  // );
+
+  const {
+    models: chatModels,
+    loading,
+    error: modelsError,
+  } = useChatModels(form.draft.model.provider);
+
+  const modelOptions: SelectOption[] = [
+    // اگر مدل ذخیره‌شده در لیست نبود، Select خراب نشود
+    ...(chatModels.some((m) => m.id === form.draft.model.model) ||
+    !form.draft.model.model
+      ? []
+      : [{ value: form.draft.model.model, label: form.draft.model.model }]),
+    ...chatModels.map((o) => ({
+      value: o.id,
+      label: o.contextWindow
+        ? `${o.label} · ${(o.contextWindow / 1000).toFixed(0)}K context`
+        : o.label,
+    })),
+  ];
+  const selected = chatModels.find((o) => o.id === form.draft.model.model);
 
   return (
     <div className="space-y-3">
@@ -52,16 +78,28 @@ export function ModelTab({
         <CardHeader
           title="AI provider"
           description="The vendor that generates answers. Retrieval runs locally and is provider-independent."
-          icon={<Cpu className="size-3.5" aria-hidden />}
+          icon={
+            <Cpu
+              className="size-3.5"
+              aria-hidden
+            />
+          }
           actions={
             <Badge tone={needsKey ? "warn" : "success"}>
-              {needsKey ? "No key on this device" : definition?.requiresKey ? "Key stored" : "No key needed"}
+              {needsKey
+                ? "No key on this device"
+                : definition?.requiresKey
+                  ? "Key stored"
+                  : "No key needed"}
             </Badge>
           }
         />
         <CardBody className="space-y-3.5">
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Provider" htmlFor="model-provider">
+            <Field
+              label="Provider"
+              htmlFor="model-provider"
+            >
               <Select
                 id="model-provider"
                 value={form.draft.model.provider}
@@ -79,11 +117,24 @@ export function ModelTab({
                 }))}
               />
             </Field>
-            <Field label="Model" htmlFor="model-name" className="sm:col-span-2">
+            <Field
+              label="Model"
+              htmlFor="model-name"
+              className="sm:col-span-2"
+              hint={
+                modelsError ? (
+                  <span className="text-warn">{modelsError}</span>
+                ) : loading ? (
+                  <span>Loading the model list…</span>
+                ) : undefined
+              }
+            >
               <Select
                 id="model-name"
                 value={form.draft.model.model}
-                onChange={(event) => form.merge("model", { model: event.target.value })}
+                onChange={(event) =>
+                  form.merge("model", { model: event.target.value })
+                }
                 options={modelOptions}
               />
             </Field>
@@ -91,14 +142,21 @@ export function ModelTab({
 
           {needsKey ? (
             <div className="flex items-start gap-2.5 rounded-card border border-warn/25 bg-warn/[0.06] px-3 py-2.5">
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
+              <AlertTriangle
+                className="mt-0.5 size-3.5 shrink-0 text-warn"
+                aria-hidden
+              />
               <p className="text-2xs leading-relaxed text-ink-soft">
                 <span className="font-medium text-warn">
                   {definition?.name} is selected but no key is stored
                 </span>{" "}
-                — queries still run, retrieve and score passages, and the answer is returned as an
-                extract from those passages. Add a key to enable real generation.{" "}
-                <Link to="/integrations" className="text-accent hover:text-accent-strong">
+                — queries still run, retrieve and score passages, and the answer
+                is returned as an extract from those passages. Add a key to
+                enable real generation.{" "}
+                <Link
+                  to="/integrations"
+                  className="text-accent hover:text-accent-strong"
+                >
                   Connect a provider →
                 </Link>
               </p>
@@ -107,15 +165,18 @@ export function ModelTab({
 
           {keyRecord?.note ? (
             <p className="flex items-start gap-2 text-2xs leading-relaxed text-ink-mute">
-              <Info className="mt-0.5 size-3.5 shrink-0 text-ink-faint" aria-hidden />
+              <Info
+                className="mt-0.5 size-3.5 shrink-0 text-ink-faint"
+                aria-hidden
+              />
               Last verification: {keyRecord.note}
             </p>
           ) : null}
 
           {definition?.browserAccess === "restricted" ? (
             <p className="text-2xs leading-relaxed text-warn">
-              {definition.name} blocks browser-origin requests. Route it through your platform API
-              before relying on it in production.
+              {definition.name} blocks browser-origin requests. Route it through
+              your platform API before relying on it in production.
             </p>
           ) : null}
         </CardBody>
@@ -138,7 +199,10 @@ export function ModelTab({
             onChange={(value) => form.merge("model", { temperature: value })}
           />
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Max output tokens" htmlFor="model-maxtokens">
+            <Field
+              label="Max output tokens"
+              htmlFor="model-maxtokens"
+            >
               <Input
                 id="model-maxtokens"
                 type="number"
@@ -147,11 +211,17 @@ export function ModelTab({
                 step={64}
                 value={form.draft.model.maxTokens}
                 onChange={(event) =>
-                  form.merge("model", { maxTokens: Number(event.target.value) || 0 })
+                  form.merge("model", {
+                    maxTokens: Number(event.target.value) || 0,
+                  })
                 }
               />
             </Field>
-            <Field label="Top P" htmlFor="model-topp" hint="Nucleus sampling cutoff.">
+            <Field
+              label="Top P"
+              htmlFor="model-topp"
+              hint="Nucleus sampling cutoff."
+            >
               <Input
                 id="model-topp"
                 type="number"
@@ -159,10 +229,16 @@ export function ModelTab({
                 max={1}
                 step={0.05}
                 value={form.draft.model.topP}
-                onChange={(event) => form.merge("model", { topP: Number(event.target.value) || 0 })}
+                onChange={(event) =>
+                  form.merge("model", { topP: Number(event.target.value) || 0 })
+                }
               />
             </Field>
-            <Field label="Frequency penalty" htmlFor="model-freq" hint="Discourages repetition.">
+            <Field
+              label="Frequency penalty"
+              htmlFor="model-freq"
+              hint="Discourages repetition."
+            >
               <Input
                 id="model-freq"
                 type="number"
@@ -171,7 +247,9 @@ export function ModelTab({
                 step={0.1}
                 value={form.draft.model.frequencyPenalty}
                 onChange={(event) =>
-                  form.merge("model", { frequencyPenalty: Number(event.target.value) || 0 })
+                  form.merge("model", {
+                    frequencyPenalty: Number(event.target.value) || 0,
+                  })
                 }
               />
             </Field>
@@ -236,8 +314,12 @@ export function PromptTab({
             className="font-mono text-2xs leading-relaxed"
           />
           <div className="flex flex-wrap items-center gap-2 text-[10px] text-ink-faint">
-            <Badge tone="neutral">{estimateTokens(form.draft.systemPrompt)} tokens</Badge>
-            <span>Composed once per request and sent before the conversation.</span>
+            <Badge tone="neutral">
+              {estimateTokens(form.draft.systemPrompt)} tokens
+            </Badge>
+            <span>
+              Composed once per request and sent before the conversation.
+            </span>
             <button
               type="button"
               className="ms-auto text-accent transition-colors hover:text-accent-strong"
@@ -258,13 +340,20 @@ export function PromptTab({
         <CardHeader
           title="Grounded-answer instruction"
           description="Prepended to the system prompt above every retrieved passage. Keep it short — it costs tokens on each request."
-          icon={<Braces className="size-3.5" aria-hidden />}
+          icon={
+            <Braces
+              className="size-3.5"
+              aria-hidden
+            />
+          }
         />
         <CardBody className="space-y-3.5">
           <Textarea
             rows={4}
             value={form.draft.rag.instruction}
-            onChange={(event) => form.merge("rag", { instruction: event.target.value })}
+            onChange={(event) =>
+              form.merge("rag", { instruction: event.target.value })
+            }
             aria-label="Grounded answer instruction"
             className="font-mono text-2xs leading-relaxed"
           />
@@ -272,11 +361,18 @@ export function PromptTab({
             <SegmentedControl
               value={form.draft.rag.noAnswerBehavior}
               onChange={(value) =>
-                form.merge("rag", { noAnswerBehavior: value as "refuse" | "answer-without-context" })
+                form.merge("rag", {
+                  noAnswerBehavior: value as
+                    | "refuse"
+                    | "answer-without-context",
+                })
               }
               options={[
                 { value: "refuse", label: "Refuse to answer" },
-                { value: "answer-without-context", label: "Answer from general knowledge" },
+                {
+                  value: "answer-without-context",
+                  label: "Answer from general knowledge",
+                },
               ]}
             />
           </Field>
@@ -288,7 +384,9 @@ export function PromptTab({
             <Input
               id="prompt-refusal"
               value={form.draft.rag.noAnswerMessage}
-              onChange={(event) => form.merge("rag", { noAnswerMessage: event.target.value })}
+              onChange={(event) =>
+                form.merge("rag", { noAnswerMessage: event.target.value })
+              }
               disabled={form.draft.rag.noAnswerBehavior !== "refuse"}
             />
           </Field>

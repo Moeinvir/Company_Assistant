@@ -1,9 +1,9 @@
 {
-  "name": "pyre-ai-platform",
+  "name": "parsis-bridge",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Pyre — an AI assistant platform with a fire-forged visual identity.",
+  "description": "Parsis Bridge — an AI assistant platform with a fire-forged visual identity.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -32,6 +32,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
     "@vitejs/plugin-react": "^5.0.4",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.9.3",
     "vite": "^7.1.9"

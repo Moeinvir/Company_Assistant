@@ -1,4 +1,4 @@
-# Pyre API
+# Parsis Bridge API
 
 NestJS API with PostgreSQL and Prisma. Workspace-scoped queries are checked
 against the authenticated user's membership. Passwords are bcrypt-hashed and

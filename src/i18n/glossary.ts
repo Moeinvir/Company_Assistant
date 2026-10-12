@@ -10,7 +10,7 @@
  * To keep another word in English, add it here and keep it Latin in ./fa.ts.
  */
 export const KEEP_LATIN = [
-  "Pyre",
+  "Parsis Bridge",
   "API",
   "RAG",
   "URL",

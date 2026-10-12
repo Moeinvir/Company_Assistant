@@ -1,9 +1,9 @@
 /*!
- * Pyre widget loader
+ * Parsis Bridge widget loader
  * -----------------
  * Drop this on any page:
  *
- *   <script async src="https://your-pyre-host/embed.js"
+ *   <script async src="https://your-parsis-bridge-host/embed.js"
  *     data-assistant="pk_xxx"
  *     data-position="bottom-right"
  *     data-theme="dark"
@@ -22,8 +22,8 @@
   "use strict";
 
   var script = document.currentScript;
-  if (!script || script.dataset.pyreMounted === "true") return;
-  script.dataset.pyreMounted = "true";
+  if (!script || script.dataset.parsisMounted === "true") return;
+  script.dataset.parsisMounted = "true";
 
   var origin = new URL(script.src, window.location.href).origin;
   var key = script.dataset.assistant || script.getAttribute("data-key") || "";
@@ -35,7 +35,7 @@
   var zIndex = parseInt(script.dataset.zindex || "2147483000", 10);
 
   if (!key) {
-    console.error("[pyre] embed.js requires data-assistant (the assistant's public key).");
+    console.error("[parsis] embed.js requires data-assistant (the assistant's public key).");
     return;
   }
 
@@ -43,7 +43,7 @@
   var PANEL_HEIGHT = 620;
 
   var root = document.createElement("div");
-  root.setAttribute("data-pyre-root", key);
+  root.setAttribute("data-parsis-root", key);
   root.style.cssText = [
     "position:fixed",
     "z-index:" + zIndex,
@@ -154,19 +154,19 @@
     destroy: function () {
       unmountFrame();
       root.remove();
-      delete window.pyre;
+      delete window.parsis;
     },
   };
 
-  window.pyre = api;
+  window.parsis = api;
 
   window.addEventListener("message", function (event) {
     if (event.origin !== origin) return;
     var data = event.data;
-    if (!data || data.source !== "pyre-widget") return;
+    if (!data || data.source !== "parsis-widget") return;
     if (data.type === "close") api.close();
     if (data.type === "ready") {
-      window.dispatchEvent(new CustomEvent("pyre:widget:ready", { detail: data }));
+      window.dispatchEvent(new CustomEvent("parsis:widget:ready", { detail: data }));
     }
   });
 

@@ -14,14 +14,24 @@
  * client.
  */
 
-import type { ModelOption, ProviderCapability, ProviderDefinition, ProviderId } from "./types";
+import type {
+  ModelOption,
+  ProviderCapability,
+  ProviderDefinition,
+  ProviderId,
+} from "./types";
 
 export class ProviderError extends Error {
   readonly provider: ProviderId;
   readonly status?: number;
   readonly hint?: string;
 
-  constructor(provider: ProviderId, message: string, status?: number, hint?: string) {
+  constructor(
+    provider: ProviderId,
+    message: string,
+    status?: number,
+    hint?: string,
+  ) {
     super(message);
     this.name = "ProviderError";
     this.provider = provider;
@@ -37,7 +47,12 @@ const chatModel = (
   tier: ModelOption["tier"],
 ): ModelOption => ({ id, label, contextWindow, tier });
 
-const embedModel = (id: string, label: string, dimensions: number, tier: ModelOption["tier"] = "balanced"): ModelOption => ({
+const embedModel = (
+  id: string,
+  label: string,
+  dimensions: number,
+  tier: ModelOption["tier"] = "balanced",
+): ModelOption => ({
   id,
   label,
   contextWindow: 8192,
@@ -121,7 +136,12 @@ export const CHAT_PROVIDERS: ProviderDefinition[] = [
     browserAccess: "supported",
     keyPlaceholder: "gsk_…",
     models: [
-      chatModel("llama-3.3-70b-versatile", "Llama 3.3 70B", 131_072, "balanced"),
+      chatModel(
+        "llama-3.3-70b-versatile",
+        "Llama 3.3 70B",
+        131_072,
+        "balanced",
+      ),
       chatModel("llama-3.1-8b-instant", "Llama 3.1 8B", 131_072, "fast"),
     ],
   },
@@ -136,9 +156,24 @@ export const CHAT_PROVIDERS: ProviderDefinition[] = [
     browserAccess: "supported",
     keyPlaceholder: "sk-or-…",
     models: [
-      chatModel("openai/gpt-4.1-mini", "GPT-4.1 mini (routed)", 1_047_576, "balanced"),
-      chatModel("anthropic/claude-sonnet-4.5", "Claude Sonnet 4.5 (routed)", 200_000, "flagship"),
-      chatModel("meta-llama/llama-3.3-70b-instruct", "Llama 3.3 70B (routed)", 131_072, "fast"),
+      chatModel(
+        "openai/gpt-4.1-mini",
+        "GPT-4.1 mini (routed)",
+        1_047_576,
+        "balanced",
+      ),
+      chatModel(
+        "anthropic/claude-sonnet-4.5",
+        "Claude Sonnet 4.5 (routed)",
+        200_000,
+        "flagship",
+      ),
+      chatModel(
+        "meta-llama/llama-3.3-70b-instruct",
+        "Llama 3.3 70B (routed)",
+        131_072,
+        "fast",
+      ),
     ],
   },
   {
@@ -158,19 +193,34 @@ export const CHAT_PROVIDERS: ProviderDefinition[] = [
     ],
     note: "Runs on your machine. The browser talks to 127.0.0.1 — nothing leaves the device.",
   },
+  {
+    id: "custom",
+    name: "Custom",
+    vendor: "Custom",
+    capability: "chat",
+    requiresKey: true,
+    defaultBaseUrl: "https://racode-llm.partschool.ir/v1",
+    docsUrl: "https://racode-llm.partschool.ir",
+    browserAccess: "supported",
+    keyPlaceholder: "sk-…",
+    models: [], // به‌صورت پویا از /models گرفته می‌شود
+    note: "مدل‌ها مستقیم از API خوانده می‌شوند.",
+  },
 ];
 
 export const EMBEDDING_PROVIDERS: ProviderDefinition[] = [
   {
     id: "local",
-    name: "Pyre local embedder",
+    name: "Parsis Bridge local embedder",
     vendor: "Built in",
     capability: "embedding",
     requiresKey: false,
     docsUrl: "/docs#local-embedder",
     browserAccess: "local",
     keyPlaceholder: "no key required",
-    models: [embedModel("pyre-hash-384", "Pyre Hash 384 (offline)", 384, "fast")],
+    models: [
+      embedModel("pyre-hash-384", "Parsis Hash 384 (offline)", 384, "fast"),
+    ],
     note: "Deterministic hashed bag-of-words vectors. Runs offline with no key and no network — ideal for evaluating retrieval before connecting a vendor.",
   },
   {
@@ -184,7 +234,12 @@ export const EMBEDDING_PROVIDERS: ProviderDefinition[] = [
     browserAccess: "supported",
     keyPlaceholder: "sk-…",
     models: [
-      embedModel("text-embedding-3-large", "text-embedding-3-large", 3072, "flagship"),
+      embedModel(
+        "text-embedding-3-large",
+        "text-embedding-3-large",
+        3072,
+        "flagship",
+      ),
       embedModel("text-embedding-3-small", "text-embedding-3-small", 1536),
     ],
   },
@@ -259,8 +314,14 @@ export function providersFor(capability: ProviderCapability) {
   return capability === "chat" ? CHAT_PROVIDERS : EMBEDDING_PROVIDERS;
 }
 
-export function modelsFor(provider: ProviderId, capability: ProviderCapability): ModelOption[] {
-  return providersFor(capability).find((entry) => entry.id === provider)?.models ?? [];
+export function modelsFor(
+  provider: ProviderId,
+  capability: ProviderCapability,
+): ModelOption[] {
+  return (
+    providersFor(capability).find((entry) => entry.id === provider)?.models ??
+    []
+  );
 }
 
 export function modelLabel(modelId: string) {
@@ -270,7 +331,12 @@ export function modelLabel(modelId: string) {
   return found?.label ?? modelId;
 }
 
-export const OPENAI_COMPATIBLE: ProviderId[] = ["openai", "mistral", "groq", "openrouter"];
+export const OPENAI_COMPATIBLE: ProviderId[] = [
+  "openai",
+  "mistral",
+  "groq",
+  "openrouter",
+];
 
 /* ----------------------------------------------------------------- requests */
 
@@ -338,8 +404,14 @@ async function request(
     if (!response.ok) {
       let detail = "";
       try {
-        const body = JSON.parse(raw) as { error?: { message?: string } | string; message?: string };
-        detail = typeof body.error === "string" ? body.error : (body.error?.message ?? body.message ?? "");
+        const body = JSON.parse(raw) as {
+          error?: { message?: string } | string;
+          message?: string;
+        };
+        detail =
+          typeof body.error === "string"
+            ? body.error
+            : (body.error?.message ?? body.message ?? "");
       } catch {
         detail = raw;
       }
@@ -362,7 +434,11 @@ async function request(
     try {
       return raw ? JSON.parse(raw) : {};
     } catch {
-      throw new ProviderError(provider, `${provider} returned a response that was not valid JSON.`, response.status);
+      throw new ProviderError(
+        provider,
+        `${provider} returned a response that was not valid JSON.`,
+        response.status,
+      );
     }
   } finally {
     clearTimeout(timeout);
@@ -391,16 +467,27 @@ function clampTemperature(provider: ProviderId, value: number): number {
 
 /** Perform a chat completion against the configured provider. */
 export async function chatComplete(input: ChatRequest): Promise<ChatResult> {
-  const req: ChatRequest = { ...input, temperature: clampTemperature(input.provider, input.temperature) };
+  const req: ChatRequest = {
+    ...input,
+    temperature: clampTemperature(input.provider, input.temperature),
+  };
   const definition = PROVIDER_MAP[req.provider];
   const base = trimBase(req.baseUrl, definition?.defaultBaseUrl);
 
   if (definition?.requiresKey && !req.apiKey) {
-    throw new ProviderError(req.provider, `${definition.name} requires an API key.`, undefined, "Add the key in API / Integrations → Provider keys.");
+    throw new ProviderError(
+      req.provider,
+      `${definition.name} requires an API key.`,
+      undefined,
+      "Add the key in API / Integrations → Provider keys.",
+    );
   }
 
   if (req.provider === "anthropic") {
-    const system = req.messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
+    const system = req.messages
+      .filter((m) => m.role === "system")
+      .map((m) => m.content)
+      .join("\n\n");
     const rest = req.messages.filter((m) => m.role !== "system");
     const body = await request(
       req.provider,
@@ -429,7 +516,10 @@ export async function chatComplete(input: ChatRequest): Promise<ChatResult> {
       stop_reason?: string;
     };
     return {
-      text: (data.content ?? []).filter((part) => part.type === "text").map((part) => part.text ?? "").join(""),
+      text: (data.content ?? [])
+        .filter((part) => part.type === "text")
+        .map((part) => part.text ?? "")
+        .join(""),
       promptTokens: data.usage?.input_tokens ?? 0,
       completionTokens: data.usage?.output_tokens ?? 0,
       model: req.model,
@@ -438,19 +528,30 @@ export async function chatComplete(input: ChatRequest): Promise<ChatResult> {
   }
 
   if (req.provider === "google") {
-    const system = req.messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
+    const system = req.messages
+      .filter((m) => m.role === "system")
+      .map((m) => m.content)
+      .join("\n\n");
     const contents = req.messages
       .filter((m) => m.role !== "system")
-      .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+      .map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
     const data = (await request(
       req.provider,
       `${base}/v1beta/models/${encodeURIComponent(req.model)}:generateContent`,
       {
         method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": req.apiKey ?? "" },
+        headers: {
+          "content-type": "application/json",
+          "x-goog-api-key": req.apiKey ?? "",
+        },
         body: JSON.stringify({
           contents,
-          ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+          ...(system
+            ? { systemInstruction: { parts: [{ text: system }] } }
+            : {}),
           generationConfig: {
             temperature: req.temperature,
             maxOutputTokens: req.maxTokens,
@@ -460,12 +561,20 @@ export async function chatComplete(input: ChatRequest): Promise<ChatResult> {
       },
       req.signal,
     )) as {
-      candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
-      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+      candidates?: {
+        content?: { parts?: { text?: string }[] };
+        finishReason?: string;
+      }[];
+      usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+      };
     };
     const candidate = data.candidates?.[0];
     return {
-      text: (candidate?.content?.parts ?? []).map((part) => part.text ?? "").join(""),
+      text: (candidate?.content?.parts ?? [])
+        .map((part) => part.text ?? "")
+        .join(""),
       promptTokens: data.usageMetadata?.promptTokenCount ?? 0,
       completionTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
       model: req.model,
@@ -484,7 +593,11 @@ export async function chatComplete(input: ChatRequest): Promise<ChatResult> {
           model: req.model,
           messages: req.messages,
           stream: false,
-          options: { temperature: req.temperature, num_predict: req.maxTokens, top_p: req.topP },
+          options: {
+            temperature: req.temperature,
+            num_predict: req.maxTokens,
+            top_p: req.topP,
+          },
         }),
       },
       req.signal,
@@ -513,7 +626,7 @@ export async function chatComplete(input: ChatRequest): Promise<ChatResult> {
         "content-type": "application/json",
         ...(req.apiKey ? { authorization: `Bearer ${req.apiKey}` } : {}),
         ...(req.provider === "openrouter"
-          ? { "x-title": "Pyre", "http-referer": window.location.origin }
+          ? { "x-title": "Parsis Bridge", "http-referer": window.location.origin }
           : {}),
       },
       body: JSON.stringify({
@@ -554,7 +667,9 @@ export interface EmbedRequest {
 }
 
 /** Embed a batch of texts with the configured provider. */
-export async function embedWithProvider(req: EmbedRequest): Promise<number[][]> {
+export async function embedWithProvider(
+  req: EmbedRequest,
+): Promise<number[][]> {
   const definition = PROVIDER_MAP[req.provider];
   const base = trimBase(req.baseUrl, definition?.defaultBaseUrl);
   if (definition?.requiresKey && !req.apiKey) {
@@ -572,7 +687,10 @@ export async function embedWithProvider(req: EmbedRequest): Promise<number[][]> 
       `${base}/embeddings`,
       {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${req.apiKey ?? ""}` },
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${req.apiKey ?? ""}`,
+        },
         body: JSON.stringify({
           model: req.model,
           input: req.texts,
@@ -581,7 +699,9 @@ export async function embedWithProvider(req: EmbedRequest): Promise<number[][]> 
       },
       req.signal,
     )) as { data?: { index: number; embedding: number[] }[] };
-    return (data.data ?? []).sort((a, b) => a.index - b.index).map((entry) => entry.embedding);
+    return (data.data ?? [])
+      .sort((a, b) => a.index - b.index)
+      .map((entry) => entry.embedding);
   }
 
   if (req.provider === "google") {
@@ -590,12 +710,16 @@ export async function embedWithProvider(req: EmbedRequest): Promise<number[][]> 
       `${base}/v1beta/models/${encodeURIComponent(req.model)}:batchEmbedContents`,
       {
         method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": req.apiKey ?? "" },
+        headers: {
+          "content-type": "application/json",
+          "x-goog-api-key": req.apiKey ?? "",
+        },
         body: JSON.stringify({
           requests: req.texts.map((text) => ({
             model: `models/${req.model}`,
             content: { parts: [{ text }] },
-            taskType: req.kind === "query" ? "RETRIEVAL_QUERY" : "RETRIEVAL_DOCUMENT",
+            taskType:
+              req.kind === "query" ? "RETRIEVAL_QUERY" : "RETRIEVAL_DOCUMENT",
             ...(req.dimensions ? { outputDimensionality: req.dimensions } : {}),
           })),
         }),
@@ -611,7 +735,10 @@ export async function embedWithProvider(req: EmbedRequest): Promise<number[][]> 
       `${base}/v2/embed`,
       {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${req.apiKey ?? ""}` },
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${req.apiKey ?? ""}`,
+        },
         body: JSON.stringify({
           model: req.model,
           texts: req.texts,
@@ -630,8 +757,15 @@ export async function embedWithProvider(req: EmbedRequest): Promise<number[][]> 
       `${base}/v1/embeddings`,
       {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${req.apiKey ?? ""}` },
-        body: JSON.stringify({ model: req.model, input: req.texts, input_type: req.kind === "query" ? "query" : "document" }),
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${req.apiKey ?? ""}`,
+        },
+        body: JSON.stringify({
+          model: req.model,
+          input: req.texts,
+          input_type: req.kind === "query" ? "query" : "document",
+        }),
       },
       req.signal,
     )) as { data?: { embedding: number[] }[] };
@@ -682,7 +816,9 @@ export async function verifyProviderKey(
   const started = performance.now();
   try {
     if (provider === "ollama") {
-      const data = (await request(provider, `${base}/api/tags`, { method: "GET" })) as {
+      const data = (await request(provider, `${base}/api/tags`, {
+        method: "GET",
+      })) as {
         models?: { name: string }[];
       };
       const count = data.models?.length ?? 0;
@@ -705,14 +841,24 @@ export async function verifyProviderKey(
       });
     } else if (provider === "anthropic") {
       await request(provider, `${base}/v1/models`, {
-        headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
       });
     } else if (provider === "cohere") {
-      await request(provider, `${base}/v1/models`, { headers: { authorization: `Bearer ${apiKey}` } });
+      await request(provider, `${base}/v1/models`, {
+        headers: { authorization: `Bearer ${apiKey}` },
+      });
     } else if (provider === "voyage") {
-      await request(provider, `${base}/v1/models`, { headers: { authorization: `Bearer ${apiKey}` } });
+      await request(provider, `${base}/v1/models`, {
+        headers: { authorization: `Bearer ${apiKey}` },
+      });
     } else {
-      await request(provider, `${base}/models`, { headers: { authorization: `Bearer ${apiKey}` } });
+      await request(provider, `${base}/models`, {
+        headers: { authorization: `Bearer ${apiKey}` },
+      });
     }
     return {
       ok: true,
@@ -728,6 +874,26 @@ export async function verifyProviderKey(
       latencyMs: Math.round(performance.now() - started),
     };
   }
+}
+
+/** لیست مدل‌ها را از endpoint ‏/models می‌گیرد (فرمت OpenAI). */
+export async function fetchProviderModels(
+  provider: ProviderId,
+  apiKey?: string,
+  baseUrl?: string,
+): Promise<ModelOption[]> {
+  const base = trimBase(baseUrl, PROVIDER_MAP[provider]?.defaultBaseUrl);
+  const data = (await request(provider, `${base}/models`, {
+    headers: apiKey ? { authorization: `Bearer ${apiKey}` } : {},
+  })) as { data?: { id: string }[] };
+  return (data.data ?? [])
+    .map((m) => ({
+      id: m.id,
+      label: m.id,
+      contextWindow: 0,
+      tier: "balanced" as const,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export function providerLabel(provider: ProviderId) {

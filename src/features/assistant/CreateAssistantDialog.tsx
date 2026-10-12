@@ -11,10 +11,21 @@ import {
   Textarea,
   type SelectOption,
 } from "@/components/ui";
-import { CHAT_PROVIDERS, EMBEDDING_PROVIDERS, modelsFor } from "@/lib/api/providers";
+import {
+  CHAT_PROVIDERS,
+  EMBEDDING_PROVIDERS,
+  modelsFor,
+} from "@/lib/api/providers";
 import { defaultAssistantDraft } from "@/lib/api/localBackend";
-import type { AssistantDraft, EmbeddingConfig, KnowledgeBase, ProviderId } from "@/lib/api/types";
+import type {
+  AssistantDraft,
+  EmbeddingConfig,
+  KnowledgeBase,
+  ProviderId,
+} from "@/lib/api/types";
 import { cn } from "@/lib/cn";
+import { useEffect } from "react"; // کنار import های قبلی
+import { useChatModels } from "@/lib/useChatModels";
 
 type PresetId = "balanced" | "precise" | "broad";
 
@@ -70,24 +81,50 @@ export function CreateAssistantDialog({
   const [provider, setProvider] = useState<ProviderId>(base.model.provider);
   const [model, setModel] = useState(base.model.model);
   const [temperature, setTemperature] = useState(base.model.temperature);
-  const [embeddingProvider, setEmbeddingProvider] = useState<ProviderId>(base.embedding.provider);
+  const [embeddingProvider, setEmbeddingProvider] = useState<ProviderId>(
+    base.embedding.provider,
+  );
   const [embeddingModel, setEmbeddingModel] = useState(base.embedding.model);
   const [presetId, setPresetId] = useState<PresetId>("balanced");
   const [selectedBases, setSelectedBases] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const chatModelOptions: SelectOption[] = modelsFor(provider, "chat").map((option) => ({
+  // const chatModelOptions: SelectOption[] = modelsFor(provider, "chat").map(
+  //   (option) => ({
+  //     value: option.id,
+  //     label: `${option.label} · ${(option.contextWindow / 1000).toFixed(0)}K context`,
+  //   }),
+  // );
+
+  // داخل کامپوننت:
+  const {
+    models: chatModels,
+    loading: modelsLoading,
+    error: modelsError,
+    reload,
+  } = useChatModels(provider);
+
+  const chatModelOptions: SelectOption[] = chatModels.map((option) => ({
     value: option.id,
-    label: `${option.label} · ${(option.contextWindow / 1000).toFixed(0)}K context`,
+    label: option.contextWindow
+      ? `${option.label} · ${(option.contextWindow / 1000).toFixed(0)}K context`
+      : option.label,
   }));
 
-  const embeddingModelOptions: SelectOption[] = modelsFor(embeddingProvider, "embedding").map(
-    (option) => ({
-      value: option.id,
-      label: `${option.label}${option.dimensions ? ` · ${option.dimensions} dims` : ""}`,
-    }),
-  );
+  // وقتی لیست آمد، اولین مدل را خودکار انتخاب کن
+  useEffect(() => {
+    if (chatModels.length && !chatModels.some((m) => m.id === model))
+      setModel(chatModels[0].id);
+  }, [chatModels, model]);
+
+  const embeddingModelOptions: SelectOption[] = modelsFor(
+    embeddingProvider,
+    "embedding",
+  ).map((option) => ({
+    value: option.id,
+    label: `${option.label}${option.dimensions ? ` · ${option.dimensions} dims` : ""}`,
+  }));
 
   const reset = () => {
     setName("");
@@ -125,12 +162,17 @@ export function CreateAssistantDialog({
           ...base.embedding,
           provider: embeddingProvider,
           model: embeddingModel,
-          dimensions: embeddingModelMeta?.dimensions ?? base.embedding.dimensions,
+          dimensions:
+            embeddingModelMeta?.dimensions ?? base.embedding.dimensions,
           chunkSize: preset.embedding.chunkSize,
           chunkOverlap: preset.embedding.chunkOverlap,
         },
         rag: { ...base.rag, ...preset.rag },
-        widget: { ...base.widget, assistantDisplayName: name.trim(), welcomeMessage: `Hi — I'm ${name.trim()}. Ask me anything about our documentation.` },
+        widget: {
+          ...base.widget,
+          assistantDisplayName: name.trim(),
+          welcomeMessage: `Hi — I'm ${name.trim()}. Ask me anything about our documentation.`,
+        },
         knowledgeBaseIds: selectedBases,
       });
       reset();
@@ -151,10 +193,23 @@ export function CreateAssistantDialog({
       size="lg"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+          >
             Cancel
           </Button>
-          <Button variant="primary" loading={busy} onClick={() => void submit()} iconLeft={<Sparkles className="size-3.5" aria-hidden />}>
+          <Button
+            variant="primary"
+            loading={busy}
+            onClick={() => void submit()}
+            iconLeft={
+              <Sparkles
+                className="size-3.5"
+                aria-hidden
+              />
+            }
+          >
             Create assistant
           </Button>
         </>
@@ -162,7 +217,10 @@ export function CreateAssistantDialog({
     >
       <div className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Name" htmlFor="assistant-name">
+          <Field
+            label="Name"
+            htmlFor="assistant-name"
+          >
             <Input
               id="assistant-name"
               value={name}
@@ -171,7 +229,11 @@ export function CreateAssistantDialog({
               autoFocus
             />
           </Field>
-          <Field label="Description" htmlFor="assistant-description" optional>
+          <Field
+            label="Description"
+            htmlFor="assistant-description"
+            optional
+          >
             <Input
               id="assistant-description"
               value={description}
@@ -195,7 +257,10 @@ export function CreateAssistantDialog({
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="AI provider" htmlFor="assistant-provider">
+          <Field
+            label="AI provider"
+            htmlFor="assistant-provider"
+          >
             <Select
               id="assistant-provider"
               value={provider}
@@ -204,21 +269,47 @@ export function CreateAssistantDialog({
                 setProvider(next);
                 setModel(modelsFor(next, "chat")[0]?.id ?? "");
               }}
-              options={CHAT_PROVIDERS.map((entry) => ({ value: entry.id, label: entry.name }))}
+              options={CHAT_PROVIDERS.map((entry) => ({
+                value: entry.id,
+                label: entry.name,
+              }))}
             />
           </Field>
-          <Field label="Model" htmlFor="assistant-model" className="sm:col-span-2">
+          <Field
+            label="Model"
+            htmlFor="assistant-model"
+            className="sm:col-span-2"
+            hint={
+              modelsLoading
+                ? "در حال دریافت مدل‌ها…"
+                : (modelsError ?? undefined)
+            }
+            action={
+              provider === "custom" ? (
+                <button
+                  type="button"
+                  onClick={() => void reload()}
+                  className="text-2xs text-accent"
+                >
+                  Refresh models
+                </button>
+              ) : undefined
+            }
+          >
             <Select
               id="assistant-model"
               value={model}
-              onChange={(event) => setModel(event.target.value)}
+              onChange={(e) => setModel(e.target.value)}
               options={chatModelOptions}
             />
           </Field>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Embedding provider" htmlFor="assistant-embed-provider">
+          <Field
+            label="Embedding provider"
+            htmlFor="assistant-embed-provider"
+          >
             <Select
               id="assistant-embed-provider"
               value={embeddingProvider}
@@ -227,7 +318,10 @@ export function CreateAssistantDialog({
                 setEmbeddingProvider(next);
                 setEmbeddingModel(modelsFor(next, "embedding")[0]?.id ?? "");
               }}
-              options={EMBEDDING_PROVIDERS.map((entry) => ({ value: entry.id, label: entry.name }))}
+              options={EMBEDDING_PROVIDERS.map((entry) => ({
+                value: entry.id,
+                label: entry.name,
+              }))}
             />
           </Field>
           <Field
@@ -246,7 +340,9 @@ export function CreateAssistantDialog({
         </div>
 
         <div>
-          <p className="mb-2 text-2xs font-medium text-ink-soft">Retrieval preset</p>
+          <p className="mb-2 text-2xs font-medium text-ink-soft">
+            Retrieval preset
+          </p>
           <div className="grid gap-2 sm:grid-cols-3">
             {PRESETS.map((preset) => {
               const Icon = preset.icon;
@@ -264,14 +360,18 @@ export function CreateAssistantDialog({
                   )}
                 >
                   <span className="flex items-center gap-2 text-2xs font-medium text-ink">
-                    <Icon className="size-3.5 text-accent" aria-hidden />
+                    <Icon
+                      className="size-3.5 text-accent"
+                      aria-hidden
+                    />
                     {preset.label}
                   </span>
                   <span className="mt-1 block text-[10px] leading-relaxed text-ink-mute">
                     {preset.blurb}
                   </span>
                   <span className="mt-2 block font-mono text-[10px] text-ink-faint">
-                    top {preset.rag.topK} · ≥{(preset.rag.scoreThreshold * 100).toFixed(0)}% ·{" "}
+                    top {preset.rag.topK} · ≥
+                    {(preset.rag.scoreThreshold * 100).toFixed(0)}% ·{" "}
                     {preset.embedding.chunkSize} chars
                   </span>
                 </button>
@@ -282,20 +382,33 @@ export function CreateAssistantDialog({
 
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-2xs font-medium text-ink-soft">Knowledge bases</p>
-            <Badge tone="neutral" icon={<Database className="size-3" aria-hidden />}>
+            <p className="text-2xs font-medium text-ink-soft">
+              Knowledge bases
+            </p>
+            <Badge
+              tone="neutral"
+              icon={
+                <Database
+                  className="size-3"
+                  aria-hidden
+                />
+              }
+            >
               {selectedBases.length} attached
             </Badge>
           </div>
           {knowledgeBases.length === 0 ? (
             <p className="rounded-card border border-dashed border-hairline px-3 py-3 text-2xs text-ink-mute">
-              No knowledge bases yet. Create one in the knowledge centre — you can attach it here
-              afterwards.
+              No knowledge bases yet. Create one in the knowledge centre — you
+              can attach it here afterwards.
             </p>
           ) : (
             <div className="space-y-2">
               {knowledgeBases.map((knowledgeBase) => (
-                <div key={knowledgeBase.id} className="rounded-card border border-hairline bg-black/20 px-3 py-2.5">
+                <div
+                  key={knowledgeBase.id}
+                  className="rounded-card border border-hairline bg-black/20 px-3 py-2.5"
+                >
                   <Checkbox
                     checked={selectedBases.includes(knowledgeBase.id)}
                     onChange={(next) =>
@@ -315,15 +428,19 @@ export function CreateAssistantDialog({
         </div>
 
         <div className="flex items-center gap-2 rounded-card border border-hairline bg-black/20 px-3 py-2.5">
-          <Bot className="size-3.5 shrink-0 text-ink-faint" aria-hidden />
+          <Bot
+            className="size-3.5 shrink-0 text-ink-faint"
+            aria-hidden
+          />
           <p className="text-[10px] leading-relaxed text-ink-faint">
-            Temperature starts at {temperature.toFixed(2)} — low values keep answers close to the
-            retrieved passages. You can tune it in the Model tab.
+            Temperature starts at {temperature.toFixed(2)} — low values keep
+            answers close to the retrieved passages. You can tune it in the
+            Model tab.
           </p>
         </div>
 
         {error ? (
-          <p className="rounded-[10px] border border-danger/25 bg-danger/[0.07] px-3 py-2 text-2xs text-danger">
+          <p className="rounded-control border border-danger/25 bg-danger/[0.07] px-3 py-2 text-2xs text-danger">
             {error}
           </p>
         ) : null}

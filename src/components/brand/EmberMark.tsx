@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 /**
- * The Pyre mark: a contained ember, not a roaring flame. It inherits the active
+ * The Parsis Bridge mark: a contained ember, not a roaring flame. It inherits the active
  * fire theme, so the brand re-tints with the user's chosen temperature.
  */
 export function EmberMark({ className, size = 28 }: { className?: string; size?: number }) {
@@ -41,7 +41,7 @@ export function Wordmark({ className, compact }: { className?: string; compact?:
       <EmberMark size={compact ? 24 : 28} />
       <span className="flex min-w-0 flex-col leading-none">
         <span className="text-[15px] font-semibold tracking-[-0.02em] text-ink">
-          Pyre
+          Parsis Bridge
         </span>
         {compact ? null : (
           <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">

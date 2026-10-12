@@ -211,7 +211,12 @@ export function Topbar({
                 className="ms-0.5 rounded-full transition hover:opacity-90"
                 aria-label={translate("Account menu")}
               >
-                <Avatar name={user?.name ?? "?"} size="sm" />
+                <Avatar
+                  name={user?.name ?? "?"}
+                  size="sm"
+                  src={user?.image}
+                  variant={user?.image ? "image" : "gradient"}
+                />
               </button>
             )}
           >

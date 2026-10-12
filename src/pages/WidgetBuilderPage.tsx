@@ -115,9 +115,9 @@ export default function WidgetBuilderPage() {
       .join("\n  ");
 
     return {
-      html: `<!-- Pyre widget · ${assistant.name} -->\n<script\n  async\n  src="${origin}/embed.js"\n  ${attributes}\n></script>`,
-      javascript: `// Mount the widget programmatically (single-page apps, consent gates).\nconst script = document.createElement("script");\nscript.async = true;\nscript.src = "${origin}/embed.js";\nscript.dataset.assistant = "${publicKey}";\nscript.dataset.position = "${config.position}";\nscript.dataset.theme = "${config.theme}";\nscript.dataset.label = ${JSON.stringify(config.launcherLabel)};\n${config.primaryColor ? `script.dataset.color = "${config.primaryColor}";\n` : ""}document.body.appendChild(script);\n\n// Optional: open the panel once the runtime is ready.\nwindow.addEventListener("pyre:widget:ready", () => window.pyre?.open());`,
-      react: `// Drop-in React component that loads the same runtime.\nimport { useEffect } from "react";\n\nexport function PyreWidget() {\n  useEffect(() => {\n    const script = document.createElement("script");\n    script.async = true;\n    script.src = "${origin}/embed.js";\n    script.dataset.assistant = "${publicKey}";\n    script.dataset.position = "${config.position}";\n    script.dataset.theme = "${config.theme}";\n    document.body.appendChild(script);\n    return () => {\n      script.remove();\n      document.querySelectorAll("[data-pyre-root]").forEach((node) => node.remove());\n    };\n  }, []);\n\n  return null;\n}`,
+      html: `<!-- Parsis Bridge widget · ${assistant.name} -->\n<script\n  async\n  src="${origin}/embed.js"\n  ${attributes}\n></script>`,
+      javascript: `// Mount the widget programmatically (single-page apps, consent gates).\nconst script = document.createElement("script");\nscript.async = true;\nscript.src = "${origin}/embed.js";\nscript.dataset.assistant = "${publicKey}";\nscript.dataset.position = "${config.position}";\nscript.dataset.theme = "${config.theme}";\nscript.dataset.label = ${JSON.stringify(config.launcherLabel)};\n${config.primaryColor ? `script.dataset.color = "${config.primaryColor}";\n` : ""}document.body.appendChild(script);\n\n// Optional: open the panel once the runtime is ready.\nwindow.addEventListener("parsis:widget:ready", () => window.parsis?.open());`,
+      react: `// Drop-in React component that loads the same runtime.\nimport { useEffect } from "react";\n\nexport function ParsisWidget() {\n  useEffect(() => {\n    const script = document.createElement("script");\n    script.async = true;\n    script.src = "${origin}/embed.js";\n    script.dataset.assistant = "${publicKey}";\n    script.dataset.position = "${config.position}";\n    script.dataset.theme = "${config.theme}";\n    document.body.appendChild(script);\n    return () => {\n      script.remove();\n      document.querySelectorAll("[data-parsis-root]").forEach((node) => node.remove());\n    };\n  }, []);\n\n  return null;\n}`,
     };
   }, [assistant, config, origin, publicKey]);
 
@@ -453,7 +453,7 @@ export default function WidgetBuilderPage() {
                 <CodeBlock code={snippets.javascript} filename="widget.js" actions={<CopyPill value={snippets.javascript} />} />
               </TabPanel>
               <TabPanel id="react" active={snippetTab === "react"}>
-                <CodeBlock code={snippets.react} filename="PyreWidget.tsx" actions={<CopyPill value={snippets.react} />} />
+                <CodeBlock code={snippets.react} filename="ParsisWidget.tsx" actions={<CopyPill value={snippets.react} />} />
               </TabPanel>
 
               <div className="grid gap-3 sm:grid-cols-3">
