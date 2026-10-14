@@ -22,11 +22,17 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const [scheme, token] = (request.headers.authorization ?? "").split(" ");
-    if (scheme !== "Bearer" || !token) throw new UnauthorizedException("Bearer token required");
+    // `EventSource` cannot set headers, so the SSE channel passes its token as
+    // `?token=`. Header auth stays preferred everywhere else.
+    const queryToken =
+      typeof request.query?.token === "string" ? request.query.token : undefined;
+    const bearer = scheme === "Bearer" && token ? token : undefined;
+    const sessionToken = bearer ?? queryToken;
+    if (!sessionToken) throw new UnauthorizedException("Bearer token required");
 
     let payload: { sub: string; jti: string };
     try {
-      payload = await this.jwt.verifyAsync<{ sub: string; jti: string }>(token);
+      payload = await this.jwt.verifyAsync<{ sub: string; jti: string }>(sessionToken);
     } catch {
       throw new UnauthorizedException("Invalid or expired session");
     }

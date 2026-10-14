@@ -102,7 +102,12 @@ export default function IntegrationsPage() {
     try {
       const result = await verifyProviderKey(editing.id, value, baseUrl.trim() || undefined);
       setCheck(result);
-      if (value) await markProviderVerified(editing.id, { ok: result.ok, message: result.message });
+      // A check result can only be recorded against a key that is actually
+      // stored. Testing a pasted-but-unsaved key is a pure connection probe —
+      // asking the API to store its outcome would fail with “key not found”.
+      if (value && keyFor(editing.id)) {
+        await markProviderVerified(editing.id, { ok: result.ok, message: result.message });
+      }
     } catch (caught) {
       setError((caught as Error).message);
     } finally {
@@ -120,6 +125,10 @@ export default function IntegrationsPage() {
         apiKey: apiKey.trim(),
         baseUrl: baseUrl.trim() || undefined,
       });
+      // Now that the row exists, the outcome of the check just run for this key
+      // is recorded too — otherwise a verified key would read “Stored,
+      // unverified” the moment it is saved.
+      if (check) await markProviderVerified(editing.id, { ok: check.ok, message: check.message });
       setEditing(null);
     } catch (caught) {
       setError((caught as Error).message);
@@ -364,7 +373,11 @@ export default function IntegrationsPage() {
                 id="provider-key"
                 type="password"
                 value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
+                onChange={(event) => {
+                  setApiKey(event.target.value);
+                  // A result belongs to the key it was measured against.
+                  setCheck(null);
+                }}
                 placeholder={editing.keyPlaceholder}
                 autoComplete="off"
                 spellCheck={false}
@@ -381,7 +394,10 @@ export default function IntegrationsPage() {
             <Input
               id="provider-base"
               value={baseUrl}
-              onChange={(event) => setBaseUrl(event.target.value)}
+              onChange={(event) => {
+                setBaseUrl(event.target.value);
+                setCheck(null);
+              }}
               placeholder={editing?.defaultBaseUrl ?? "https://…"}
             />
           </Field>

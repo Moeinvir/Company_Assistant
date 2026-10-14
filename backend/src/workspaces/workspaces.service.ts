@@ -61,7 +61,8 @@ export class WorkspacesService {
     }));
   }
 
-  private async requireMembership(userId: string, workspaceId: string) {
+  /** Workspace access check — the tenancy boundary. */
+  async requireMembership(userId: string, workspaceId: string) {
     const membership = await this.prisma.membership.findUnique({
       where: { userId_workspaceId: { userId, workspaceId } },
     });

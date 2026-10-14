@@ -1,8 +1,8 @@
 import "dotenv/config";
 import "reflect-metadata";
-import { ValidationPipe } from "@nestjs/common";
+import { Logger, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import express from "express";
+import { json as expressJson, urlencoded as expressUrlencoded } from "express";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
@@ -12,8 +12,8 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create(AppModule, { bodyParser: false });
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+  app.use(expressJson({ limit: "10mb" }));
+  app.use(expressUrlencoded({ extended: true, limit: "10mb" }));
   app.enableCors({
     origin: process.env.WEB_ORIGIN?.split(",").map((origin) => origin.trim()) ?? false,
     credentials: true,
@@ -26,7 +26,15 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(Number(process.env.PORT ?? 3000));
+  // Some hosts/terminals export PORT=0 (or a non-numeric value), which tells
+  // Node to bind a *random* free port. The browser then keeps calling the
+  // default port and every request fails with "Failed to fetch", so only a
+  // real, positive port wins.
+  const configuredPort = Number(process.env.PORT);
+  const port = Number.isInteger(configuredPort) && configuredPort > 0 ? configuredPort : 3000;
+
+  await app.listen(port);
+  Logger.log(`API listening on http://localhost:${port}`, "Bootstrap");
 }
 
 void bootstrap();

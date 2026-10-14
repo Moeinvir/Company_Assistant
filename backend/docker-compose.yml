@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: pyre
       POSTGRES_DB: pyre
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pyre-postgres:/var/lib/postgresql/data
     healthcheck:

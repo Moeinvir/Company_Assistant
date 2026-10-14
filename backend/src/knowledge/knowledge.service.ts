@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { DocumentSource } from "@prisma/client";
+import { EventsService } from "../events/events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   AddFileDocumentDto,
@@ -12,7 +13,10 @@ import {
 
 @Injectable()
 export class KnowledgeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventsService,
+  ) {}
 
   async list(userId: string, workspaceId: string) {
     await this.requireWorkspace(userId, workspaceId);
@@ -38,6 +42,7 @@ export class KnowledgeService {
     const knowledgeBase = await this.prisma.knowledgeBase.create({
       data: { workspaceId, name: input.name.trim(), description: input.description },
     });
+    this.events.publish({ type: "knowledge.changed", workspaceId });
     return {
       id: knowledgeBase.id,
       workspaceId: knowledgeBase.workspaceId,
@@ -56,6 +61,7 @@ export class KnowledgeService {
       where: { id: knowledgeBaseId },
       data: patch,
     });
+    this.events.publish({ type: "knowledge.changed", workspaceId: knowledgeBase.workspaceId });
     return {
       id: knowledgeBase.id,
       workspaceId: knowledgeBase.workspaceId,
@@ -72,8 +78,9 @@ export class KnowledgeService {
   }
 
   async remove(userId: string, knowledgeBaseId: string) {
-    await this.requireKnowledgeBase(userId, knowledgeBaseId);
+    const knowledgeBase = await this.requireKnowledgeBase(userId, knowledgeBaseId);
     await this.prisma.knowledgeBase.delete({ where: { id: knowledgeBaseId } });
+    this.events.publish({ type: "knowledge.changed", workspaceId: knowledgeBase.workspaceId });
   }
 
   async documents(userId: string, knowledgeBaseId: string) {
@@ -169,6 +176,7 @@ export class KnowledgeService {
           : {}),
       },
     });
+    this.publishDocumentsChanged(document.workspaceId, document.knowledgeBaseId);
     return this.serializeDocument(updated);
   }
 
@@ -178,17 +186,19 @@ export class KnowledgeService {
   }
 
   async removeDocument(userId: string, documentId: string) {
-    await this.requireDocument(userId, documentId);
+    const document = await this.requireDocument(userId, documentId);
     await this.prisma.document.delete({ where: { id: documentId } });
+    this.publishDocumentsChanged(document.workspaceId, document.knowledgeBaseId);
   }
 
   async removeAllDocuments(userId: string, knowledgeBaseId: string) {
-    await this.requireKnowledgeBase(userId, knowledgeBaseId);
+    const knowledgeBase = await this.requireKnowledgeBase(userId, knowledgeBaseId);
     await this.prisma.document.deleteMany({ where: { knowledgeBaseId } });
+    this.publishDocumentsChanged(knowledgeBase.workspaceId, knowledgeBaseId);
   }
 
   async reindex(userId: string, knowledgeBaseId: string, embedding: Record<string, unknown>) {
-    await this.requireKnowledgeBase(userId, knowledgeBaseId);
+    const knowledgeBase = await this.requireKnowledgeBase(userId, knowledgeBaseId);
     await this.prisma.document.updateMany({
       where: { knowledgeBaseId },
       data: {
@@ -200,6 +210,7 @@ export class KnowledgeService {
         indexedAt: null,
       },
     });
+    this.publishDocumentsChanged(knowledgeBase.workspaceId, knowledgeBaseId);
   }
 
   private async createDocument(
@@ -233,7 +244,13 @@ export class KnowledgeService {
         progress: 0,
       },
     });
+    this.publishDocumentsChanged(workspaceId, knowledgeBaseId);
     return this.serializeDocument(document);
+  }
+
+  /** Ingestion runs client-side, so clients re-read the affected document list. */
+  private publishDocumentsChanged(workspaceId: string, knowledgeBaseId: string) {
+    this.events.publish({ type: "documents.changed", workspaceId, knowledgeBaseId });
   }
 
   private async requireWorkspace(userId: string, workspaceId: string) {

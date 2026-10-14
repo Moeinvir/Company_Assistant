@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
+import { EventsService } from "../events/events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateAssistantDto, UpdateAssistantDto } from "./assistants.dto";
 
@@ -14,7 +15,10 @@ const EMPTY_STATS = {
 
 @Injectable()
 export class AssistantsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventsService,
+  ) {}
 
   async list(userId: string, workspaceId: string) {
     await this.requireWorkspace(userId, workspaceId);
@@ -53,6 +57,7 @@ export class AssistantsService {
       },
       include: { knowledgeBindings: { select: { knowledgeBaseId: true } } },
     });
+    this.publishChanged(workspaceId);
     return this.serialize(assistant);
   }
 
@@ -82,6 +87,7 @@ export class AssistantsService {
       data,
       include: { knowledgeBindings: { select: { knowledgeBaseId: true } } },
     });
+    this.publishChanged(assistant.workspaceId);
     return this.serialize(assistant);
   }
 
@@ -107,12 +113,18 @@ export class AssistantsService {
       },
       include: { knowledgeBindings: { select: { knowledgeBaseId: true } } },
     });
+    this.publishChanged(duplicate.workspaceId);
     return this.serialize(duplicate);
   }
 
   async remove(userId: string, assistantId: string) {
-    await this.requireAssistant(userId, assistantId);
+    const assistant = await this.requireAssistant(userId, assistantId);
     await this.prisma.assistant.delete({ where: { id: assistantId } });
+    this.publishChanged(assistant.workspaceId);
+  }
+
+  private publishChanged(workspaceId: string) {
+    this.events.publish({ type: "assistants.changed", workspaceId });
   }
 
   private async requireWorkspace(userId: string, workspaceId: string) {

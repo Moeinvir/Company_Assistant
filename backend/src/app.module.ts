@@ -9,11 +9,13 @@ import { HealthController } from "./health.controller";
 import { ProvidersModule } from "./providers/providers.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { ConversationsModule } from "./conversations/conversations.module";
+import { EventsModule } from "./events/events.module";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    EventsModule,
     AuthModule,
     WorkspacesModule,
     AssistantsModule,
