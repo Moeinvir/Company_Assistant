@@ -94,7 +94,11 @@ export class HttpClient implements ApiClient {
   private async call<T>(
     method: "GET" | "POST" | "PATCH" | "DELETE",
     path: string,
-    options: { token?: string; body?: Json; query?: Record<string, string | number | undefined> } = {},
+    options: {
+      token?: string;
+      body?: Json;
+      query?: Record<string, string | number | undefined>;
+    } = {},
   ): Promise<T> {
     // A relative base such as "/api" is resolved against the current origin.
     const url = new URL(`${this.baseUrl}${path}`, window.location.origin);
@@ -107,7 +111,9 @@ export class HttpClient implements ApiClient {
         method,
         headers: {
           ...(options.body ? { "content-type": "application/json" } : {}),
-          ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
+          ...(options.token
+            ? { authorization: `Bearer ${options.token}` }
+            : {}),
         },
         body: options.body ? JSON.stringify(options.body) : undefined,
       });
@@ -124,7 +130,10 @@ export class HttpClient implements ApiClient {
     if (!response.ok) {
       let message = `Request failed with ${response.status}`;
       try {
-        const payload = (await response.json()) as { message?: string; error?: string };
+        const payload = (await response.json()) as {
+          message?: string;
+          error?: string;
+        };
         message = payload.message ?? payload.error ?? message;
       } catch {
         /* non-JSON error body */
@@ -137,13 +146,21 @@ export class HttpClient implements ApiClient {
   }
 
   auth = {
-    signUp: async (input: { name: string; email: string; password: string }) => {
-      const result = await this.call<AuthResult>("POST", "/auth/sign-up", { body: input as unknown as Json });
+    signUp: async (input: {
+      name: string;
+      email: string;
+      password: string;
+    }) => {
+      const result = await this.call<AuthResult>("POST", "/auth/sign-up", {
+        body: input as unknown as Json,
+      });
       writeToken(result.session.token);
       return result;
     },
     signIn: async (input: { email: string; password: string }) => {
-      const result = await this.call<AuthResult>("POST", "/auth/sign-in", { body: input as unknown as Json });
+      const result = await this.call<AuthResult>("POST", "/auth/sign-in", {
+        body: input as unknown as Json,
+      });
       writeToken(result.session.token);
       return result;
     },
@@ -151,7 +168,9 @@ export class HttpClient implements ApiClient {
       const candidate = token ?? readToken();
       if (!candidate) return null;
       try {
-        return await this.call<AuthResult>("GET", "/auth/session", { token: candidate });
+        return await this.call<AuthResult>("GET", "/auth/session", {
+          token: candidate,
+        });
       } catch {
         writeToken(undefined);
         return null;
@@ -165,14 +184,28 @@ export class HttpClient implements ApiClient {
       }
     },
     updateProfile: (token: string, patch: ProfilePatch) =>
-      this.call<User>("PATCH", "/auth/profile", { token, body: patch as unknown as Json }),
+      this.call<User>("PATCH", "/auth/profile", {
+        token,
+        body: patch as unknown as Json,
+      }),
   };
 
   workspaces = {
-    list: (token: string) => this.call<Workspace[]>("GET", "/workspaces", { token }),
-    create: (token: string, input: { name: string; plan?: Workspace["plan"] }) =>
-      this.call<Workspace>("POST", "/workspaces", { token, body: input as unknown as Json }),
-    update: (token: string, workspaceId: string, patch: Partial<Pick<Workspace, "name" | "plan">>) =>
+    list: (token: string) =>
+      this.call<Workspace[]>("GET", "/workspaces", { token }),
+    create: (
+      token: string,
+      input: { name: string; plan?: Workspace["plan"] },
+    ) =>
+      this.call<Workspace>("POST", "/workspaces", {
+        token,
+        body: input as unknown as Json,
+      }),
+    update: (
+      token: string,
+      workspaceId: string,
+      patch: Partial<Pick<Workspace, "name" | "plan">>,
+    ) =>
       this.call<Workspace>("PATCH", `/workspaces/${workspaceId}`, {
         token,
         body: patch as unknown as Json,
@@ -181,12 +214,19 @@ export class HttpClient implements ApiClient {
       await this.call<void>("DELETE", `/workspaces/${workspaceId}`, { token });
     },
     members: (token: string, workspaceId: string) =>
-      this.call<WorkspaceMember[]>("GET", `/workspaces/${workspaceId}/members`, { token }),
+      this.call<WorkspaceMember[]>(
+        "GET",
+        `/workspaces/${workspaceId}/members`,
+        { token },
+      ),
   };
 
   assistants = {
     list: (token: string, workspaceId: string) =>
-      this.call<Assistant[]>("GET", "/assistants", { token, query: { workspaceId } }),
+      this.call<Assistant[]>("GET", "/assistants", {
+        token,
+        query: { workspaceId },
+      }),
     get: (token: string, assistantId: string) =>
       this.call<Assistant>("GET", `/assistants/${assistantId}`, { token }),
     create: (token: string, workspaceId: string, draft: AssistantDraft) =>
@@ -194,13 +234,19 @@ export class HttpClient implements ApiClient {
         token,
         body: { ...draft, workspaceId } as unknown as Json,
       }),
-    update: (token: string, assistantId: string, patch: Partial<AssistantDraft>) =>
+    update: (
+      token: string,
+      assistantId: string,
+      patch: Partial<AssistantDraft>,
+    ) =>
       this.call<Assistant>("PATCH", `/assistants/${assistantId}`, {
         token,
         body: patch as unknown as Json,
       }),
     duplicate: (token: string, assistantId: string) =>
-      this.call<Assistant>("POST", `/assistants/${assistantId}/duplicate`, { token }),
+      this.call<Assistant>("POST", `/assistants/${assistantId}/duplicate`, {
+        token,
+      }),
     remove: async (token: string, assistantId: string) => {
       await this.call<void>("DELETE", `/assistants/${assistantId}`, { token });
     },
@@ -208,8 +254,15 @@ export class HttpClient implements ApiClient {
 
   knowledge = {
     list: (token: string, workspaceId: string) =>
-      this.call<KnowledgeBase[]>("GET", "/knowledge-bases", { token, query: { workspaceId } }),
-    create: (token: string, workspaceId: string, input: { name: string; description: string }) =>
+      this.call<KnowledgeBase[]>("GET", "/knowledge-bases", {
+        token,
+        query: { workspaceId },
+      }),
+    create: (
+      token: string,
+      workspaceId: string,
+      input: { name: string; description: string },
+    ) =>
       this.call<KnowledgeBase>("POST", "/knowledge-bases", {
         token,
         body: { ...input, workspaceId } as unknown as Json,
@@ -224,34 +277,72 @@ export class HttpClient implements ApiClient {
         body: patch as unknown as Json,
       }),
     remove: async (token: string, knowledgeBaseId: string) => {
-      await this.call<void>("DELETE", `/knowledge-bases/${knowledgeBaseId}`, { token });
+      await this.call<void>("DELETE", `/knowledge-bases/${knowledgeBaseId}`, {
+        token,
+      });
     },
     documents: (token: string, knowledgeBaseId: string) =>
-      this.call<DocumentRecord[]>("GET", `/knowledge-bases/${knowledgeBaseId}/documents`, { token }),
+      this.call<DocumentRecord[]>(
+        "GET",
+        `/knowledge-bases/${knowledgeBaseId}/documents`,
+        { token },
+      ),
     addText: (
       token: string,
-      input: { knowledgeBaseId: string; name: string; content: string; embedding: EmbeddingConfig },
-    ) =>
-      this.call<DocumentRecord>("POST", `/knowledge-bases/${input.knowledgeBaseId}/documents/text`, {
-        token,
-        body: input as unknown as Json,
-      }),
+      input: {
+        knowledgeBaseId: string;
+        name: string;
+        content: string;
+        embedding: EmbeddingConfig;
+      },
+    ) => {
+      // knowledgeBaseId توی آدرس هست؛ داخل body نباید بره
+      const { knowledgeBaseId, ...body } = input;
+      return this.call<DocumentRecord>(
+        "POST",
+        `/knowledge-bases/${knowledgeBaseId}/documents/text`,
+        {
+          token,
+          body: body as unknown as Json,
+        },
+      );
+    },
     addFile: (
       token: string,
-      input: { knowledgeBaseId: string; file: FilePayload; embedding: EmbeddingConfig },
-    ) =>
-      this.call<DocumentRecord>("POST", `/knowledge-bases/${input.knowledgeBaseId}/documents/file`, {
-        token,
-        body: input as unknown as Json,
-      }),
+      input: {
+        knowledgeBaseId: string;
+        file: FilePayload;
+        embedding: EmbeddingConfig;
+      },
+    ) => {
+      const { knowledgeBaseId, ...body } = input;
+      return this.call<DocumentRecord>(
+        "POST",
+        `/knowledge-bases/${knowledgeBaseId}/documents/file`,
+        {
+          token,
+          body: body as unknown as Json,
+        },
+      );
+    },
     addUrl: (
       token: string,
-      input: { knowledgeBaseId: string; url: string; embedding: EmbeddingConfig },
-    ) =>
-      this.call<DocumentRecord>("POST", `/knowledge-bases/${input.knowledgeBaseId}/documents/url`, {
-        token,
-        body: input as unknown as Json,
-      }),
+      input: {
+        knowledgeBaseId: string;
+        url: string;
+        embedding: EmbeddingConfig;
+      },
+    ) => {
+      const { knowledgeBaseId, ...body } = input;
+      return this.call<DocumentRecord>(
+        "POST",
+        `/knowledge-bases/${knowledgeBaseId}/documents/url`,
+        {
+          token,
+          body: body as unknown as Json,
+        },
+      );
+    },
     updateDocument: (
       token: string,
       documentId: string,
@@ -262,26 +353,43 @@ export class HttpClient implements ApiClient {
         body: input as unknown as Json,
       }),
     documentContent: (token: string, documentId: string) =>
-      this.call<{ content: string }>("GET", `/documents/${documentId}/content`, { token }).then(
-        (result) => result.content,
-      ),
+      this.call<{ content: string }>(
+        "GET",
+        `/documents/${documentId}/content`,
+        { token },
+      ).then((result) => result.content),
     removeDocument: async (token: string, documentId: string) => {
       await this.call<void>("DELETE", `/documents/${documentId}`, { token });
     },
     removeAllDocuments: async (token: string, knowledgeBaseId: string) => {
-      await this.call<void>("DELETE", `/knowledge-bases/${knowledgeBaseId}/documents`, { token });
+      await this.call<void>(
+        "DELETE",
+        `/knowledge-bases/${knowledgeBaseId}/documents`,
+        { token },
+      );
     },
-    reindex: async (token: string, knowledgeBaseId: string, embedding: EmbeddingConfig) => {
-      await this.call<void>("POST", `/knowledge-bases/${knowledgeBaseId}/reindex`, {
-        token,
-        body: embedding as unknown as Json,
-      });
+    reindex: async (
+      token: string,
+      knowledgeBaseId: string,
+      embedding: EmbeddingConfig,
+    ) => {
+      await this.call<void>(
+        "POST",
+        `/knowledge-bases/${knowledgeBaseId}/reindex`,
+        {
+          token,
+          body: embedding as unknown as Json,
+        },
+      );
     },
   };
 
   providers = {
     listKeys: (token: string, workspaceId: string) =>
-      this.call<ProviderKeyRecord[]>("GET", "/provider-keys", { token, query: { workspaceId } }),
+      this.call<ProviderKeyRecord[]>("GET", "/provider-keys", {
+        token,
+        query: { workspaceId },
+      }),
     setKey: (
       token: string,
       workspaceId: string,
@@ -292,26 +400,46 @@ export class HttpClient implements ApiClient {
         // An absent key is omitted entirely so keyless runtimes validate.
         body: { ...input, workspaceId } as unknown as Json,
       }),
-    removeKey: async (token: string, workspaceId: string, provider: ProviderId) => {
-      await this.call<void>("DELETE", `/provider-keys/${provider}`, { token, query: { workspaceId } });
-    },
-    markVerified: (token: string, workspaceId: string, provider: ProviderId, result: { ok: boolean; message: string }) =>
-      this.call<ProviderKeyRecord>("POST", `/provider-keys/${provider}/verify`, {
+    removeKey: async (
+      token: string,
+      workspaceId: string,
+      provider: ProviderId,
+    ) => {
+      await this.call<void>("DELETE", `/provider-keys/${provider}`, {
         token,
-        body: { ...result, workspaceId } as unknown as Json,
-      }),
+        query: { workspaceId },
+      });
+    },
+    markVerified: (
+      token: string,
+      workspaceId: string,
+      provider: ProviderId,
+      result: { ok: boolean; message: string },
+    ) =>
+      this.call<ProviderKeyRecord>(
+        "POST",
+        `/provider-keys/${provider}/verify`,
+        {
+          token,
+          body: { ...result, workspaceId } as unknown as Json,
+        },
+      ),
     /**
      * Credentials for browser-side provider calls. This deployment keeps the
      * keys server-side, so the correct answer is "none" — the UI reads which
      * providers are configured from `listKeys`, and every provider call is
      * proxied through the API with the stored credential.
      */
-    resolveCredentials: async (): Promise<Partial<Record<ProviderId, Credentials>>> => ({}),
+    resolveCredentials: async (): Promise<
+      Partial<Record<ProviderId, Credentials>>
+    > => ({}),
   };
 
   playground = {
-    query: (token: string, request: QueryRequest) => this.runQuery(token, request),
-    search: (token: string, request: SearchRequest) => this.runSearch(token, request),
+    query: (token: string, request: QueryRequest) =>
+      this.runQuery(token, request),
+    search: (token: string, request: SearchRequest) =>
+      this.runSearch(token, request),
   };
 
   /**
@@ -323,15 +451,23 @@ export class HttpClient implements ApiClient {
   private async retrievalContext(
     token: string,
     assistant: Assistant,
-  ): Promise<{ chunks: Chunk[]; kbNames: Map<string, string>; documentNames: Map<string, string> }> {
+  ): Promise<{
+    chunks: Chunk[];
+    kbNames: Map<string, string>;
+    documentNames: Map<string, string>;
+  }> {
     const kbNames = new Map<string, string>();
     const documentNames = new Map<string, string>();
     const chunks: Chunk[] = [];
-    if (assistant.knowledgeBaseIds.length === 0) return { chunks, kbNames, documentNames };
+    if (assistant.knowledgeBaseIds.length === 0)
+      return { chunks, kbNames, documentNames };
 
     const embedder = createEmbedder(assistant.embedding, () => undefined);
 
-    for (const knowledgeBase of await this.knowledge.list(token, assistant.workspaceId)) {
+    for (const knowledgeBase of await this.knowledge.list(
+      token,
+      assistant.workspaceId,
+    )) {
       kbNames.set(knowledgeBase.id, knowledgeBase.name);
     }
 
@@ -357,7 +493,9 @@ export class HttpClient implements ApiClient {
               chunkOverlap: assistant.embedding.chunkOverlap,
             })
           : [];
-        const vectors = pieces.length ? await embedder.embed(pieces.map((piece) => piece.content)) : [];
+        const vectors = pieces.length
+          ? await embedder.embed(pieces.map((piece) => piece.content))
+          : [];
         const built: Chunk[] = pieces.map((piece, index) => ({
           id: `${document.id}:${index}`,
           documentId: document.id,
@@ -368,7 +506,10 @@ export class HttpClient implements ApiClient {
           tokens: piece.tokens,
           vector: vectors[index] ?? [],
         }));
-        this.documentChunks.set(document.id, { revision: document.updatedAt, chunks: built });
+        this.documentChunks.set(document.id, {
+          revision: document.updatedAt,
+          chunks: built,
+        });
         chunks.push(...built);
       }
     }
@@ -376,9 +517,15 @@ export class HttpClient implements ApiClient {
     return { chunks, kbNames, documentNames };
   }
 
-  private async runQuery(token: string, request: QueryRequest): Promise<QueryResponse> {
+  private async runQuery(
+    token: string,
+    request: QueryRequest,
+  ): Promise<QueryResponse> {
     const assistant = await this.assistants.get(token, request.assistantId);
-    const { chunks, kbNames, documentNames } = await this.retrievalContext(token, assistant);
+    const { chunks, kbNames, documentNames } = await this.retrievalContext(
+      token,
+      assistant,
+    );
     return answerQuestion({
       assistant,
       question: request.question,
@@ -396,10 +543,16 @@ export class HttpClient implements ApiClient {
     });
   }
 
-  private async runSearch(token: string, request: SearchRequest): Promise<SearchResponse> {
+  private async runSearch(
+    token: string,
+    request: SearchRequest,
+  ): Promise<SearchResponse> {
     const assistant = await this.assistants.get(token, request.assistantId);
     const started = performance.now();
-    const { chunks, kbNames, documentNames } = await this.retrievalContext(token, assistant);
+    const { chunks, kbNames, documentNames } = await this.retrievalContext(
+      token,
+      assistant,
+    );
     const embedder = createEmbedder(assistant.embedding, () => undefined);
     const queryVector =
       request.strategy === "keyword"
@@ -411,19 +564,22 @@ export class HttpClient implements ApiClient {
       queryVector,
     });
 
-    const retrieved: RetrievedChunk[] = results.map(({ chunk, score, vectorScore, keywordScore }) => ({
-      chunkId: chunk.id,
-      documentId: chunk.documentId,
-      documentName: documentNames.get(chunk.documentId) ?? "Unknown document",
-      knowledgeBaseId: chunk.knowledgeBaseId,
-      knowledgeBaseName: kbNames.get(chunk.knowledgeBaseId) ?? "Knowledge base",
-      index: chunk.index,
-      content: chunk.content,
-      score: Number(score.toFixed(4)),
-      vectorScore: Number(vectorScore.toFixed(4)),
-      keywordScore: Number(keywordScore.toFixed(4)),
-      tokens: chunk.tokens,
-    }));
+    const retrieved: RetrievedChunk[] = results.map(
+      ({ chunk, score, vectorScore, keywordScore }) => ({
+        chunkId: chunk.id,
+        documentId: chunk.documentId,
+        documentName: documentNames.get(chunk.documentId) ?? "Unknown document",
+        knowledgeBaseId: chunk.knowledgeBaseId,
+        knowledgeBaseName:
+          kbNames.get(chunk.knowledgeBaseId) ?? "Knowledge base",
+        index: chunk.index,
+        content: chunk.content,
+        score: Number(score.toFixed(4)),
+        vectorScore: Number(vectorScore.toFixed(4)),
+        keywordScore: Number(keywordScore.toFixed(4)),
+        tokens: chunk.tokens,
+      }),
+    );
 
     return {
       results: retrieved,
@@ -436,7 +592,10 @@ export class HttpClient implements ApiClient {
   }
 
   /** Chunked document text, keyed by document id and the revision it was read at. */
-  private documentChunks = new Map<string, { revision: string; chunks: Chunk[] }>();
+  private documentChunks = new Map<
+    string,
+    { revision: string; chunks: Chunk[] }
+  >();
 
   conversations = {
     list: (token: string, workspaceId: string, assistantId?: string) =>
@@ -445,14 +604,25 @@ export class HttpClient implements ApiClient {
         query: { workspaceId, assistantId },
       }),
     messages: (token: string, conversationId: string) =>
-      this.call<ChatMessage[]>("GET", `/conversations/${conversationId}/messages`, { token }),
+      this.call<ChatMessage[]>(
+        "GET",
+        `/conversations/${conversationId}/messages`,
+        { token },
+      ),
     clear: async (token: string, workspaceId: string) => {
-      await this.call<void>("DELETE", "/conversations", { token, query: { workspaceId } });
+      await this.call<void>("DELETE", "/conversations", {
+        token,
+        query: { workspaceId },
+      });
     },
   };
 
   analytics = {
-    overview: (token: string, workspaceId: string, range: AnalyticsSnapshot["range"]) =>
+    overview: (
+      token: string,
+      workspaceId: string,
+      range: AnalyticsSnapshot["range"],
+    ) =>
       this.call<AnalyticsSnapshot>("GET", "/analytics/overview", {
         token,
         query: { workspaceId, range },
@@ -467,7 +637,10 @@ export class HttpClient implements ApiClient {
   widget = {
     config: (publicKey: string) =>
       this.call<PublicWidgetConfig>("GET", `/public/widget/${publicKey}`),
-    query: (publicKey: string, input: { question: string; conversationId?: string }) =>
+    query: (
+      publicKey: string,
+      input: { question: string; conversationId?: string },
+    ) =>
       this.call<{ response: QueryResponse; conversationId: string }>(
         "POST",
         `/public/widget/${publicKey}/query`,
@@ -479,7 +652,11 @@ export class HttpClient implements ApiClient {
    * Server-sent events are the transport for change notifications. The channel
    * is per workspace, so a client can never observe another tenant's events.
    */
-  subscribe(token: string, workspaceId: string, handler: (event: BackendEvent) => void) {
+  subscribe(
+    token: string,
+    workspaceId: string,
+    handler: (event: BackendEvent) => void,
+  ) {
     const url = new URL(`${this.baseUrl}/workspaces/${workspaceId}/events`);
     url.searchParams.set("token", token);
     const source = new EventSource(url.toString());
@@ -494,6 +671,9 @@ export class HttpClient implements ApiClient {
   }
 
   async clearSampleData(token: string, workspaceId: string) {
-    await this.call<void>("POST", "/workspaces/sample-data/clear", { token, query: { workspaceId } });
+    await this.call<void>("POST", "/workspaces/sample-data/clear", {
+      token,
+      query: { workspaceId },
+    });
   }
 }

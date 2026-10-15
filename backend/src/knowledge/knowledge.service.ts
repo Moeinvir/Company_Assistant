@@ -167,7 +167,7 @@ export class KnowledgeService {
         ...(patch.embedding
           ? {
               embeddingProvider: String(patch.embedding.provider ?? "local"),
-              embeddingModel: String(patch.embedding.model ?? "local-hash-384"),
+              embeddingModel: String(patch.embedding.model ?? "pyre-hash-384"),
               status: "queued",
               progress: 0,
               chunkCount: 0,
@@ -203,7 +203,7 @@ export class KnowledgeService {
       where: { knowledgeBaseId },
       data: {
         embeddingProvider: String(embedding.provider ?? "local"),
-        embeddingModel: String(embedding.model ?? "local-hash-384"),
+        embeddingModel: String(embedding.model ?? "pyre-hash-384"),
         status: "queued",
         progress: 0,
         chunkCount: 0,
@@ -239,7 +239,7 @@ export class KnowledgeService {
         characters: input.content.length,
         tokenEstimate: Math.ceil(input.content.length / 4),
         embeddingProvider: String(input.embedding.provider ?? "local"),
-        embeddingModel: String(input.embedding.model ?? "local-hash-384"),
+        embeddingModel: String(input.embedding.model ?? "pyre-hash-384"),
         status: "queued",
         progress: 0,
       },

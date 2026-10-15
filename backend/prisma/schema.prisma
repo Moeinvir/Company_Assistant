@@ -27,7 +27,11 @@ enum DocumentSource {
 
 enum DocumentStatus {
   queued
+  uploading
   processing
+  chunking
+  embedding
+  indexing
   indexed
   failed
 }
@@ -147,7 +151,7 @@ model Document {
   chunkCount        Int            @default(0)
   tokenEstimate     Int            @default(0)
   embeddingProvider String         @default("local")
-  embeddingModel    String         @default("local-hash-384")
+  embeddingModel    String         @default("pyre-hash-384")
   error             String?        @db.Text
   content           String         @db.Text
   indexedAt         DateTime?

@@ -8,7 +8,7 @@ CREATE TYPE "WorkspacePlan" AS ENUM ('trial', 'team', 'scale');
 CREATE TYPE "DocumentSource" AS ENUM ('file', 'url', 'text');
 
 -- CreateEnum
-CREATE TYPE "DocumentStatus" AS ENUM ('queued', 'processing', 'indexed', 'failed');
+CREATE TYPE "DocumentStatus" AS ENUM ('queued', 'uploading', 'processing', 'chunking', 'embedding', 'indexing', 'indexed', 'failed');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -113,7 +113,7 @@ CREATE TABLE "Document" (
     "chunkCount" INTEGER NOT NULL DEFAULT 0,
     "tokenEstimate" INTEGER NOT NULL DEFAULT 0,
     "embeddingProvider" TEXT NOT NULL DEFAULT 'local',
-    "embeddingModel" TEXT NOT NULL DEFAULT 'local-hash-384',
+    "embeddingModel" TEXT NOT NULL DEFAULT 'pyre-hash-384',
     "error" TEXT,
     "content" TEXT NOT NULL,
     "indexedAt" TIMESTAMP(3),
