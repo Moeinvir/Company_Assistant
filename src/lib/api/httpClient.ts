@@ -6,20 +6,30 @@
  * mirror the method names in `client.ts` so the mapping is auditable.
  *
  * Two behaviours change relative to the offline backend, both deliberate:
- *  • `resolveCredentials` returns an empty map. A hosted deployment keeps
- *    provider keys on the server and never ships them to the browser, so
- *    generation happens server-side.
+ *  • `resolveCredentials` returns an empty map. Provider keys are stored
+ *    encrypted on the server and never shipped to the browser; generation is
+ *    proxied through the API (see `providerProxy.ts`).
  *  • ingestion is performed by the server; `addFile`/`addText` send content and
  *    the returned document carries the processing status streamed over the
  *    subscription channel or polled by the caller.
+ *
+ * Retrieval assembles its passages from the documents the API stores (chunked
+ * in the browser, with the same chunker and embedder the offline pipeline
+ * uses). That keeps one retrieval implementation for both modes while the
+ * secret-dependent half — the call to the model — stays on the server.
  */
 
+import { chunkText } from "../rag/chunker";
+import { createEmbedder } from "./embedder";
+import { answerQuestion } from "../rag/pipeline";
+import { searchChunks } from "../rag/vectorStore";
 import type {
   ActivityEntry,
   AnalyticsSnapshot,
   Assistant,
   AssistantDraft,
   ChatMessage,
+  Chunk,
   Conversation,
   DocumentRecord,
   EmbeddingConfig,
@@ -28,6 +38,7 @@ import type {
   ProviderKeyRecord,
   QueryRequest,
   QueryResponse,
+  RetrievedChunk,
   SearchRequest,
   SearchResponse,
   User,
@@ -90,14 +101,25 @@ export class HttpClient implements ApiClient {
     for (const [key, value] of Object.entries(options.query ?? {})) {
       if (value !== undefined) url.searchParams.set(key, String(value));
     }
-    const response = await fetch(url.toString(), {
-      method,
-      headers: {
-        ...(options.body ? { "content-type": "application/json" } : {}),
-        ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
-      },
-      body: options.body ? JSON.stringify(options.body) : undefined,
-    });
+    let response: Response;
+    try {
+      response = await fetch(url.toString(), {
+        method,
+        headers: {
+          ...(options.body ? { "content-type": "application/json" } : {}),
+          ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      });
+    } catch {
+      // A network-level failure otherwise reaches the UI as a bare
+      // "Failed to fetch", which says nothing about which service was
+      // unreachable. Name the target so a wrong VITE_PYRE_API_URL, a stopped
+      // API or a blocked origin is obvious instead of looking fatal.
+      throw new Error(
+        `Cannot reach the platform API at ${url.origin}. Check that the backend is running on that port and that VITE_PYRE_API_URL in the frontend .env points at it.`,
+      );
+    }
 
     if (!response.ok) {
       let message = `Request failed with ${response.status}`;
@@ -263,10 +285,11 @@ export class HttpClient implements ApiClient {
     setKey: (
       token: string,
       workspaceId: string,
-      input: { provider: ProviderId; apiKey: string; baseUrl?: string },
+      input: { provider: ProviderId; apiKey?: string; baseUrl?: string },
     ) =>
       this.call<ProviderKeyRecord>("POST", "/provider-keys", {
         token,
+        // An absent key is omitted entirely so keyless runtimes validate.
         body: { ...input, workspaceId } as unknown as Json,
       }),
     removeKey: async (token: string, workspaceId: string, provider: ProviderId) => {
@@ -278,25 +301,142 @@ export class HttpClient implements ApiClient {
         body: { ...result, workspaceId } as unknown as Json,
       }),
     /**
-     * A hosted API performs the provider call itself, so no credentials are
-     * handed to the browser. Retrieval falls back to a server-side embedding
-     * call exposed through the playground endpoints.
+     * Credentials for browser-side provider calls. This deployment keeps the
+     * keys server-side, so the correct answer is "none" — the UI reads which
+     * providers are configured from `listKeys`, and every provider call is
+     * proxied through the API with the stored credential.
      */
     resolveCredentials: async (): Promise<Partial<Record<ProviderId, Credentials>>> => ({}),
   };
 
   playground = {
-    query: (token: string, request: QueryRequest) =>
-      this.call<QueryResponse>("POST", "/playground/query", {
-        token,
-        body: request as unknown as Json,
-      }),
-    search: (token: string, request: SearchRequest) =>
-      this.call<SearchResponse>("POST", "/playground/search", {
-        token,
-        body: request as unknown as Json,
-      }),
+    query: (token: string, request: QueryRequest) => this.runQuery(token, request),
+    search: (token: string, request: SearchRequest) => this.runSearch(token, request),
   };
+
+  /**
+   * Passages for an assistant, built from the documents the API holds. Each
+   * document's chunks are cached until the document itself changes, so a query
+   * only re-reads what was edited. Vectors come from the configured embedder;
+   * the built-in offline embedder needs no key, which is why it is the default.
+   */
+  private async retrievalContext(
+    token: string,
+    assistant: Assistant,
+  ): Promise<{ chunks: Chunk[]; kbNames: Map<string, string>; documentNames: Map<string, string> }> {
+    const kbNames = new Map<string, string>();
+    const documentNames = new Map<string, string>();
+    const chunks: Chunk[] = [];
+    if (assistant.knowledgeBaseIds.length === 0) return { chunks, kbNames, documentNames };
+
+    const embedder = createEmbedder(assistant.embedding, () => undefined);
+
+    for (const knowledgeBase of await this.knowledge.list(token, assistant.workspaceId)) {
+      kbNames.set(knowledgeBase.id, knowledgeBase.name);
+    }
+
+    for (const knowledgeBaseId of assistant.knowledgeBaseIds) {
+      const documents = await this.knowledge.documents(token, knowledgeBaseId);
+      for (const document of documents) {
+        documentNames.set(document.id, document.name);
+        const cached = this.documentChunks.get(document.id);
+        if (cached && cached.revision === document.updatedAt) {
+          chunks.push(...cached.chunks);
+          continue;
+        }
+
+        let content = "";
+        try {
+          content = await this.knowledge.documentContent(token, document.id);
+        } catch {
+          // A document that cannot be read simply contributes no passages.
+        }
+        const pieces = content.trim()
+          ? chunkText(content, {
+              chunkSize: assistant.embedding.chunkSize,
+              chunkOverlap: assistant.embedding.chunkOverlap,
+            })
+          : [];
+        const vectors = pieces.length ? await embedder.embed(pieces.map((piece) => piece.content)) : [];
+        const built: Chunk[] = pieces.map((piece, index) => ({
+          id: `${document.id}:${index}`,
+          documentId: document.id,
+          knowledgeBaseId,
+          workspaceId: assistant.workspaceId,
+          index,
+          content: piece.content,
+          tokens: piece.tokens,
+          vector: vectors[index] ?? [],
+        }));
+        this.documentChunks.set(document.id, { revision: document.updatedAt, chunks: built });
+        chunks.push(...built);
+      }
+    }
+
+    return { chunks, kbNames, documentNames };
+  }
+
+  private async runQuery(token: string, request: QueryRequest): Promise<QueryResponse> {
+    const assistant = await this.assistants.get(token, request.assistantId);
+    const { chunks, kbNames, documentNames } = await this.retrievalContext(token, assistant);
+    return answerQuestion({
+      assistant,
+      question: request.question,
+      history: request.history,
+      chunks,
+      kbNames,
+      documentNames,
+      getCredentials: () => undefined,
+      overrides: {
+        topK: request.topKOverride,
+        threshold: request.scoreThresholdOverride,
+        temperature: request.temperatureOverride,
+        strategy: request.strategyOverride,
+      },
+    });
+  }
+
+  private async runSearch(token: string, request: SearchRequest): Promise<SearchResponse> {
+    const assistant = await this.assistants.get(token, request.assistantId);
+    const started = performance.now();
+    const { chunks, kbNames, documentNames } = await this.retrievalContext(token, assistant);
+    const embedder = createEmbedder(assistant.embedding, () => undefined);
+    const queryVector =
+      request.strategy === "keyword"
+        ? null
+        : ((await embedder.embed([request.query], "query"))[0] ?? null);
+    const { results, scanned } = searchChunks(chunks, request.query, {
+      topK: request.topK,
+      strategy: request.strategy,
+      queryVector,
+    });
+
+    const retrieved: RetrievedChunk[] = results.map(({ chunk, score, vectorScore, keywordScore }) => ({
+      chunkId: chunk.id,
+      documentId: chunk.documentId,
+      documentName: documentNames.get(chunk.documentId) ?? "Unknown document",
+      knowledgeBaseId: chunk.knowledgeBaseId,
+      knowledgeBaseName: kbNames.get(chunk.knowledgeBaseId) ?? "Knowledge base",
+      index: chunk.index,
+      content: chunk.content,
+      score: Number(score.toFixed(4)),
+      vectorScore: Number(vectorScore.toFixed(4)),
+      keywordScore: Number(keywordScore.toFixed(4)),
+      tokens: chunk.tokens,
+    }));
+
+    return {
+      results: retrieved,
+      latencyMs: Math.round(performance.now() - started),
+      strategy: request.strategy,
+      scannedChunks: scanned,
+      embeddingProvider: embedder.provider,
+      embeddingModel: embedder.model,
+    };
+  }
+
+  /** Chunked document text, keyed by document id and the revision it was read at. */
+  private documentChunks = new Map<string, { revision: string; chunks: Chunk[] }>();
 
   conversations = {
     list: (token: string, workspaceId: string, assistantId?: string) =>

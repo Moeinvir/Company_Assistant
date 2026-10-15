@@ -289,4 +289,34 @@ export const FA_PART5: Array<[string, string]> = [
   ["messages will be deleted. Its published widget will stop responding.", "پیام حذف می‌شود. ویجتِ منتشرشدهٔ آن دیگر پاسخ نمی‌دهد."],
   ["— low values keep answers close to the retrieved passages. You can tune it in the Model tab.", "شروع می‌شود — مقدار کم، پاسخ‌ها را به قطعه‌های بازیابی‌شده نزدیک نگه می‌دارد. آن را در زبانهٔ مدل می‌توانید تنظیم کنید."],
   ["Embedding", "Embedding"],
+  // ── Deployment modes, provider proxy and model discovery ─────────────────
+  [
+    "Accounts and documents live on the platform API. Provider keys are encrypted on the server, never sent to this browser, and every provider call is proxied through the API.",
+    "حساب‌ها و اسناد روی API پلتفرم نگهداری می‌شوند. کلیدهای ارائه‌دهنده روی سرور رمزنگاری می‌شوند، هرگز به این مرورگر نمی‌رسند و هر فراخوانی ارائه‌دهنده از طریق API انجام می‌شود.",
+  ],
+  [
+    "Accounts, documents and keys are stored in this browser profile by the local data layer. A demo account is created with a pre-populated sample workspace you can delete at any time. Nothing leaves this device.",
+    "حساب‌ها، اسناد و کلیدها توسط لایهٔ دادهٔ محلی در همین مرورگر نگهداری می‌شوند. یک حساب آزمایشی همراه با فضای کاری نمونه ساخته می‌شود که هر زمان می‌توانید حذفش کنید. هیچ‌چیز از این دستگاه خارج نمی‌شود.",
+  ],
+  ["Create an account and workspace", "ساخت حساب و فضای کاری"],
+  ["Refresh models", "به‌روزرسانی فهرست مدل‌ها"],
+  ["No model selected yet — pick one so queries can generate.", "هنوز مدلی انتخاب نشده — یکی را انتخاب کنید تا پرسش‌ها پاسخ تولید کنند."],
+  ["Choose a model — a query cannot be generated without one.", "یک مدل انتخاب کنید — بدون مدل، پرسشی تولید نمی‌شود."],
+  [
+    "Paste the key you generated with the vendor. It is encrypted and stored on the API server; the browser never keeps a copy, and the connection test runs server-side.",
+    "کلیدی را که از ارائه‌دهنده گرفته‌اید بچسبانید. روی سرور API رمزنگاری و ذخیره می‌شود؛ مرورگر هیچ نسخه‌ای نگه نمی‌دارد و تست اتصال هم روی سرور اجرا می‌شود.",
+  ],
+  [
+    "Paste the key you generated with the vendor. Offline demo mode keeps it in this browser profile and calls the vendor directly.",
+    "کلیدی را که از ارائه‌دهنده گرفته‌اید بچسبانید. در حالت دمو آفلاین کلید در همین مرورگر می‌ماند و تماس با ارائه‌دهنده مستقیم است.",
+  ],
+  ["no key required", "نیازی به کلید نیست"],
+  [
+    "Keys are encrypted on the API server and never sent to this browser; only a masked tail is shown here. Every provider call — verification, model discovery and generation — runs server-side, so a vendor that refuses browser origins cannot break the workspace.",
+    "کلیدها روی سرور API رمزنگاری می‌شوند و هرگز به این مرورگر فرستاده نمی‌شوند؛ اینجا فقط دنبالهٔ ماسک‌شده نمایش داده می‌شود. هر تماس با ارائه‌دهنده — تست، دریافت فهرست مدل‌ها و تولید پاسخ — روی سرور اجرا می‌شود؛ پس ارائه‌دهنده‌ای که درخواست مرورگر را رد می‌کند نمی‌تواند کار را مختل کند.",
+  ],
+  [
+    "This is a real request to the provider's own API, made from the API server with the key above — a browser CORS restriction cannot affect it.",
+    "این یک درخواست واقعی به API خودِ ارائه‌دهنده است که با کلید بالا از سرور API انجام شده — محدودیت CORS مرورگر نمی‌تواند روی آن اثر بگذارد.",
+  ],
 ];

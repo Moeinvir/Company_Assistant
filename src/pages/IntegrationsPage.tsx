@@ -57,7 +57,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function IntegrationsPage() {
-  const { workspace } = useSession();
+  const { workspace, client } = useSession();
   const {
     providerKeys,
     saveProviderKey,
@@ -122,7 +122,8 @@ export default function IntegrationsPage() {
     try {
       await saveProviderKey({
         provider: editing.id,
-        apiKey: apiKey.trim(),
+        // Local runtimes need no secret; send nothing rather than an empty one.
+        apiKey: apiKey.trim() || undefined,
         baseUrl: baseUrl.trim() || undefined,
       });
       // Now that the row exists, the outcome of the check just run for this key
@@ -162,10 +163,9 @@ export default function IntegrationsPage() {
       <div className="mb-3 flex items-start gap-2.5 rounded-card border border-info/25 bg-info/[0.06] px-3.5 py-3">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden />
         <p className="text-2xs leading-relaxed text-ink-soft">
-          Keys are held for this browser profile so the offline build can call providers directly, and
-          only a masked tail is ever shown to the interface. A hosted deployment keeps them on the
-          server and proxies every provider call — the interface is built for that boundary and never
-          logs, displays or embeds a key in a URL.
+          {client.mode === "http"
+            ? "Keys are encrypted on the API server and never sent to this browser; only a masked tail is shown here. Every provider call — verification, model discovery and generation — runs server-side, so a vendor that refuses browser origins cannot break the workspace."
+            : "Keys are held for this browser profile so the offline build can call providers directly, and only a masked tail is ever shown to the interface. A hosted deployment keeps them on the server and proxies every provider call — the interface is built for that boundary and never logs, displays or embeds a key in a URL."}
         </p>
       </div>
 
@@ -337,7 +337,9 @@ export default function IntegrationsPage() {
         title={editing ? `Connect ${editing.name}` : "Connect provider"}
         description={
           editing?.requiresKey
-            ? "Paste the key you generated with the vendor. It is stored for this browser profile only."
+            ? client.mode === "http"
+              ? "Paste the key you generated with the vendor. It is encrypted and stored on the API server; the browser never keeps a copy, and the connection test runs server-side."
+              : "Paste the key you generated with the vendor. Offline demo mode keeps it in this browser profile and calls the vendor directly."
             : "This provider runs locally and needs no key."
         }
         size="md"
@@ -428,8 +430,9 @@ export default function IntegrationsPage() {
               </p>
               <p className="mt-1">{check.message}</p>
               <p className="mt-1.5 text-[10px] text-ink-faint">
-                This is a real request to the provider's own API. Results are reported verbatim — a
-                CORS failure means the provider refuses browser origins and must be proxied.
+                {client.mode === "http"
+                  ? "This is a real request to the provider's own API, made from the API server with the key above — a browser CORS restriction cannot affect it."
+                  : "This is a real request to the provider's own API from this browser. Results are reported verbatim — a CORS failure means the provider refuses browser origins and must be proxied."}
               </p>
             </div>
           ) : null}

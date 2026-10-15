@@ -145,6 +145,10 @@ export function CreateAssistantDialog({
       setError("Give the assistant a name.");
       return;
     }
+    if (!model.trim()) {
+      setError("Choose a model — a query cannot be generated without one.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const preset = PRESETS.find((entry) => entry.id === presetId)!;

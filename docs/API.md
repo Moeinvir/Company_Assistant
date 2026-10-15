@@ -80,16 +80,45 @@
 | POST | `/knowledge/:id/reindex` | ساخت مجدد ایندکس با embedding جدید |
 | POST | `/assistants/:id/bind` | چسباندن/جداکردن KB به دستیار |
 
-## Providers (کلیدهای API)
+## Providers (کلیدهای API و پروکسی ارائه‌دهنده)
 
 | متد | مسیر | توضیح |
 | --- | --- | --- |
-| GET | `/workspaces/:workspaceId/providers` | فقط `maskedKey` + وضعیت |
-| PUT | `/workspaces/:workspaceId/providers/:provider` | ذخیره کلید (AES-256-GCM)؛ `baseUrl` اختیاری |
-| DELETE | `.../providers/:provider` | حذف کلید |
-| POST | `.../providers/:provider/verify` | ثبت نتیجه تست (`ok`, `message`) |
+| GET | `/provider-keys?workspaceId=…` | فقط `maskedKey` + وضعیت (کلید خام هرگز برنمی‌گردد) |
+| POST | `/provider-keys` | ذخیره کلید (AES-256-GCM)؛ `{ workspaceId, provider, apiKey?, baseUrl? }` |
+| DELETE | `/provider-keys/:provider?workspaceId=…` | حذف کلید |
+| GET | `/provider-keys/:provider/models?workspaceId=…&baseUrl=…` | فهرست مدل‌ها با کلید ذخیره‌شده |
+| POST | `/provider-keys/:provider/check` | تست اتصال؛ `apiKey` اختیاری (تست کلید هنوز ذخیره‌نشده) |
+| POST | `/provider-keys/:provider/chat` | تکمیل گفتگو در سمت سرور (کلید از سرور خوانده می‌شود) |
+| POST | `/provider-keys/:provider/verify` | ثبت نتیجه تست روی ردیف ذخیره‌شده (`ok`, `message`) |
 
-`provider` یکی از شناسه‌های [ProviderId](../src/lib/api/types.ts) است.
+`provider` یکی از شناسه‌های [ProviderId](../src/lib/api/types.ts) است (`openai`، `anthropic`،
+`google`، `mistral`، `groq`، `openrouter`، `ollama`، `cohere`، `voyage`، `local`، `custom`).
+
+نمونهٔ `chat`:
+
+```json
+{
+  "workspaceId": "ws_…",
+  "model": "openai/gpt-4.1-mini",
+  "messages": [{ "role": "user", "content": "سلام" }],
+  "temperature": 0.2,
+  "maxTokens": 512
+}
+```
+
+پاسخ: `{ text, promptTokens, completionTokens, model, finishReason }`.
+
+نکته‌های امنیتی و خطاها:
+
+- کلید همیشه روی سرور می‌ماند؛ `chat` هیچ کلیدی از کلاینت نمی‌پذیرد و مقدار کلید در
+  URL یا لاگ قرار نمی‌گیرد.
+- خطاهای بالادستی با `upstreamStatus` و پیام امن برمی‌گردند؛ متن خطای ارائه‌دهنده قبل از
+  بازگشت از کلید پاک‌سازی می‌شود (`502` برای خطای ارائه‌دهنده، `400` برای ورودی ناقص،
+  `404` برای عضویت نداشتن در ورک‌اسپیس).
+- `baseUrl` سفارشی اعتبارسنجی می‌شود: فقط `http/https`، بدون کاربر/رمز داخل URL و بدون
+  آدرس‌های metadata ابری (`169.254.169.254`). لوکال‌هاست برای Ollama و گیت‌وی‌های
+  self-hosted مجاز است.
 
 ## Conversations
 

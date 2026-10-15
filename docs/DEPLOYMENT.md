@@ -41,7 +41,8 @@ migrationها هنگام اتصال به‌صورت خودکار با `prisma mi
 | `JWT_SECRET` | ✅ | ≥ 32 کاراکتر برای امضای JWT |
 | `PROVIDER_KEYS_ENCRYPTION_SECRET` | ✅ | ≥ 32 کاراکتر؛ clave داده‌های AES برای رمز Provider key |
 | `WEB_ORIGIN` | ⚪ | لیست originهای مجاز CORS (کاما-جدا). خالی = CORS غیرفعال |
-| `PORT` | ⚪ | پیش‌فرض `3000` |
+| `PORT` | ⚪ | پیش‌فرض `3000`؛ مقدار export‌شده در محیط هاست بر این فایل اولویت دارد (dotenv مقدار موجود را overwrite نمی‌کند). مقدار غیرعددی یا صفر نادیده گرفته می‌شود |
+| `API_PORT` | ⚪ | اختیاری و همیشه بر `PORT` (و مقدار ارثی محیط) اولویت دارد — برای pin کردن پورت در همان `.env` |
 
 ⚠️ هر دو secret باید **متفاوت** و تصادفی باشند؛ مثلاً:
 ```bash
@@ -121,6 +122,8 @@ npm run preview              # serve نسخه build + تست SW
 | خطای Provider: `PROVIDER_KEYS_ENCRYPTION_SECRET must be set…` | secret تنظیم نشده یا کوتاه است | مقدار ≥۳۲ کاراکتر قرار دهید |
 | توکن کاربر ناگهان نامعتبر | ابطال session (خروج) | ورود مجدد؛ sessionها ۷ روز اعتبار دارند |
 | Migration هنگام بالا آمدن داکر fail می‌شود | Postgres آماده نشده | `depends_on` با healthcheck انجام شده؛ اگر مشکل ادامه داشت یک‌بار restart کنید |
+| لاگین با «Failed to fetch» و درخواست به پورت اشتباه | `VITE_PYRE_API_URL` با پورت واقعی API یکی نیست | پورت را از خط `API listening on http://localhost:…` در لاگ بک‌اند بردارید، `.env` فرانت را به همان مقدار اصلاح و dev server را restart کنید |
+| API روی پورت تصادفی بالا می‌آید | محیط هاست `PORT=0` (یا غیرعددی) export کرده؛ dotenv مقدار موجود را overwrite نمی‌کند | پورت نامعتبر نادیده گرفته می‌شود و `3000` استفاده می‌شود؛ برای پورت دیگر، `PORT` معتبر در `backend/.env` و همان مقدار در `VITE_PYRE_API_URL` بگذارید |
 
 ---
 

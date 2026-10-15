@@ -11,6 +11,7 @@
  * report server-side changes. Nothing in the UI can bypass it to reach data.
  */
 
+import { setProviderProxyBase } from "./providerProxy";
 import type {
   ActivityEntry,
   AnalyticsSnapshot,
@@ -173,10 +174,11 @@ export interface ApiClient {
 
   providers: {
     listKeys(token: string, workspaceId: string): Promise<ProviderKeyRecord[]>;
+    /** `apiKey` is optional: local runtimes such as Ollama need only an address. */
     setKey(
       token: string,
       workspaceId: string,
-      input: { provider: ProviderId; apiKey: string; baseUrl?: string },
+      input: { provider: ProviderId; apiKey?: string; baseUrl?: string },
     ): Promise<ProviderKeyRecord>;
     removeKey(token: string, workspaceId: string, provider: ProviderId): Promise<void>;
     markVerified(
@@ -240,6 +242,10 @@ let client: ApiClient | null = null;
 /**
  * Resolve the active client. Set `VITE_PYRE_API_URL` to point at a REST
  * backend; otherwise the offline data layer is used.
+ *
+ * The choice also decides who talks to the AI vendors: the platform API (keys
+ * stay on the server, no browser CORS) or this browser (offline demo mode, the
+ * operator's own keys).
  */
 export async function getApiClient(): Promise<ApiClient> {
   if (client) return client;
@@ -247,9 +253,11 @@ export async function getApiClient(): Promise<ApiClient> {
   if (baseUrl) {
     const { HttpClient } = await import("./httpClient");
     client = new HttpClient(baseUrl);
+    setProviderProxyBase(baseUrl);
   } else {
     const { LocalBackend } = await import("./localBackend");
     client = new LocalBackend();
+    setProviderProxyBase(null);
   }
   return client;
 }

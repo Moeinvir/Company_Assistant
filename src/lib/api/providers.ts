@@ -20,6 +20,12 @@ import type {
   ProviderDefinition,
   ProviderId,
 } from "./types";
+import {
+  ProxyError,
+  providerProxyContext,
+  providerProxyPaths,
+  proxyRequest,
+} from "./providerProxy";
 
 export class ProviderError extends Error {
   readonly provider: ProviderId;
@@ -336,7 +342,28 @@ export const OPENAI_COMPATIBLE: ProviderId[] = [
   "mistral",
   "groq",
   "openrouter",
+  // A custom provider *is* an OpenAI-compatible endpoint the operator runs.
+  "custom",
 ];
+
+/** Where each vendor lists models; used when the browser talks to it directly. */
+const MODELS_PATH: Partial<Record<ProviderId, string>> = {
+  anthropic: "/v1/models",
+  google: "/v1beta/models",
+  ollama: "/api/tags",
+  local: "/api/tags",
+  cohere: "/v1/models",
+  voyage: "/v1/models",
+};
+
+/** Turn a proxy failure into the `ProviderError` the rest of the app expects. */
+function asProviderError(provider: ProviderId, error: unknown): ProviderError {
+  if (error instanceof ProviderError) return error;
+  if (error instanceof ProxyError) {
+    return new ProviderError(provider, error.message, error.status, error.hint);
+  }
+  return new ProviderError(provider, (error as Error)?.message ?? `${provider} request failed.`);
+}
 
 /* ----------------------------------------------------------------- requests */
 
@@ -465,7 +492,14 @@ function clampTemperature(provider: ProviderId, value: number): number {
   return Math.min(max, Math.max(0, value));
 }
 
-/** Perform a chat completion against the configured provider. */
+/**
+ * Perform a chat completion against the configured provider.
+ *
+ * Against the platform API the call is proxied: the server resolves the
+ * workspace key and performs the request, so a browser CORS restriction or a
+ * key that only exists server-side can never break generation. In offline mode
+ * the browser calls the provider directly with the operator's own key.
+ */
 export async function chatComplete(input: ChatRequest): Promise<ChatResult> {
   const req: ChatRequest = {
     ...input,
@@ -473,6 +507,49 @@ export async function chatComplete(input: ChatRequest): Promise<ChatResult> {
   };
   const definition = PROVIDER_MAP[req.provider];
   const base = trimBase(req.baseUrl, definition?.defaultBaseUrl);
+
+  if (!req.model?.trim()) {
+    throw new ProviderError(
+      req.provider,
+      `No model is selected for ${definition?.name ?? req.provider}.`,
+      undefined,
+      "Pick a model in the assistant's Model tab (or create the assistant again and choose one).",
+    );
+  }
+
+  const proxy = providerProxyContext();
+  if (proxy) {
+    try {
+      const result = await proxyRequest<{
+        text?: string;
+        promptTokens?: number;
+        completionTokens?: number;
+        model?: string;
+        finishReason?: string | null;
+      }>(providerProxyPaths.chat(req.provider), {
+        method: "POST",
+        body: {
+          workspaceId: proxy.workspaceId,
+          model: req.model,
+          messages: req.messages,
+          temperature: req.temperature,
+          maxTokens: req.maxTokens,
+          topP: req.topP,
+          baseUrl: req.baseUrl,
+        },
+        signal: req.signal,
+      });
+      return {
+        text: result?.text ?? "",
+        promptTokens: result?.promptTokens ?? 0,
+        completionTokens: result?.completionTokens ?? 0,
+        model: result?.model ?? req.model,
+        finishReason: result?.finishReason ?? null,
+      };
+    } catch (error) {
+      throw asProviderError(req.provider, error);
+    }
+  }
 
   if (definition?.requiresKey && !req.apiKey) {
     throw new ProviderError(
@@ -677,7 +754,9 @@ export async function embedWithProvider(
       req.provider,
       `${definition?.name ?? req.provider} requires an API key for embeddings.`,
       undefined,
-      "Connect the provider in API / Integrations, or switch this assistant to the built-in offline embedder.",
+      providerProxyContext()
+        ? "This build proxies generation through the API but still embeds in the browser. Switch this assistant to the built-in offline embedder, or run without a backend to embed with a vendor key."
+        : "Connect the provider in API / Integrations, or switch this assistant to the built-in offline embedder.",
     );
   }
 
@@ -814,6 +893,39 @@ export async function verifyProviderKey(
   const definition = PROVIDER_MAP[provider];
   const base = trimBase(baseUrl, definition?.defaultBaseUrl);
   const started = performance.now();
+
+  // Against the platform API the probe runs server-side, with the key that was
+  // just pasted *or* the stored one — never a browser call to the vendor.
+  const proxy = providerProxyContext();
+  if (proxy) {
+    try {
+      const result = await proxyRequest<{ ok?: boolean; message?: string; latencyMs?: number }>(
+        providerProxyPaths.check(provider),
+        {
+          method: "POST",
+          body: {
+            workspaceId: proxy.workspaceId,
+            apiKey: apiKey?.trim() || undefined,
+            baseUrl: baseUrl?.trim() || undefined,
+          },
+        },
+      );
+      return {
+        ok: result?.ok !== false,
+        message: result?.message ?? "Key accepted by the provider.",
+        latencyMs: result?.latencyMs ?? Math.round(performance.now() - started),
+      };
+    } catch (error) {
+      const proxyError = error instanceof ProxyError ? error : null;
+      return {
+        ok: false,
+        message: proxyError?.message ?? (error as Error).message,
+        status: proxyError?.status,
+        latencyMs: Math.round(performance.now() - started),
+      };
+    }
+  }
+
   try {
     if (provider === "ollama") {
       const data = (await request(provider, `${base}/api/tags`, {
@@ -876,20 +988,57 @@ export async function verifyProviderKey(
   }
 }
 
-/** لیست مدل‌ها را از endpoint ‏/models می‌گیرد (فرمت OpenAI). */
+/**
+ * List the models a provider actually serves.
+ *
+ * Against the platform API the server asks the vendor with the stored key (the
+ * browser never sees it); offline this is a direct browser call, which only
+ * works for vendors that allow browser origins.
+ */
 export async function fetchProviderModels(
   provider: ProviderId,
   apiKey?: string,
   baseUrl?: string,
 ): Promise<ModelOption[]> {
-  const base = trimBase(baseUrl, PROVIDER_MAP[provider]?.defaultBaseUrl);
-  const data = (await request(provider, `${base}/models`, {
+  const proxy = providerProxyContext();
+  if (proxy) {
+    try {
+      return await proxyRequest<ModelOption[]>(providerProxyPaths.models(provider), {
+        method: "GET",
+        query: { workspaceId: proxy.workspaceId, baseUrl: baseUrl?.trim() || undefined },
+      });
+    } catch (error) {
+      throw asProviderError(provider, error);
+    }
+  }
+
+  const definition = PROVIDER_MAP[provider];
+  const base = trimBase(baseUrl, definition?.defaultBaseUrl);
+  const path = MODELS_PATH[provider] ?? "/models";
+  const data = (await request(provider, `${base}${path}`, {
     headers: apiKey ? { authorization: `Bearer ${apiKey}` } : {},
-  })) as { data?: { id: string }[] };
-  return (data.data ?? [])
-    .map((m) => ({
-      id: m.id,
-      label: m.id,
+  })) as {
+    data?: { id?: string; name?: string; display_name?: string }[];
+    models?: { id?: string; name?: string; model?: string; displayName?: string }[];
+  };
+
+  const entries = provider === "ollama" || provider === "local"
+    ? (data.models ?? []).map((entry) => ({ id: entry.model ?? entry.name ?? entry.id ?? "", label: entry.name ?? entry.model ?? "" }))
+    : provider === "google"
+      ? (data.models ?? []).map((entry) => ({
+          id: (entry.name ?? entry.id ?? "").replace(/^models\//, ""),
+          label: entry.displayName ?? entry.name ?? "",
+        }))
+      : (data.data ?? []).map((entry) => ({
+          id: entry.id ?? entry.name ?? "",
+          label: entry.display_name ?? entry.name ?? entry.id ?? "",
+        }));
+
+  return entries
+    .filter((entry) => entry.id.trim().length > 0)
+    .map((entry) => ({
+      id: entry.id,
+      label: entry.label || entry.id,
       contextWindow: 0,
       tier: "balanced" as const,
     }))

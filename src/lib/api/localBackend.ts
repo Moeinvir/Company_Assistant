@@ -22,7 +22,7 @@
 import { answerQuestion, ingestText, type IngestStageEvent } from "../rag/pipeline";
 import { clearLexicalCache, searchChunks } from "../rag/vectorStore";
 import { createEmbedder } from "./embedder";
-import { ProviderError, modelsFor } from "./providers";
+import { PROVIDER_MAP, ProviderError, modelsFor } from "./providers";
 import { htmlToText } from "../rag/html";
 import { unpackVector, packVector, type PackedChunk } from "./vectorCodec";
 import { SAMPLE_DOCUMENTS, SAMPLE_KNOWLEDGE_BASES } from "./seed";
@@ -1505,11 +1505,16 @@ export class LocalBackend implements ApiClient {
     setKey: async (
       token: string,
       workspaceId: string,
-      input: { provider: ProviderId; apiKey: string; baseUrl?: string },
+      input: { provider: ProviderId; apiKey?: string; baseUrl?: string },
     ) => {
       this.assertWorkspace(token, workspaceId);
-      const trimmed = input.apiKey.trim();
-      if (!trimmed) throw new Error("Paste a key before saving.");
+      const trimmed = input.apiKey?.trim() ?? "";
+      // A local runtime such as Ollama needs an address, not a secret.
+      const keyless = PROVIDER_MAP[input.provider]?.requiresKey === false;
+      if (!trimmed && !keyless) throw new Error("Paste a key before saving.");
+      if (!trimmed && keyless && !input.baseUrl?.trim() && !PROVIDER_MAP[input.provider]?.defaultBaseUrl) {
+        throw new Error("Enter the address this runtime is served from.");
+      }
       const existing = this.db.providerKeys.find(
         (entry) => entry.workspaceId === workspaceId && entry.provider === input.provider,
       );
@@ -1517,16 +1522,22 @@ export class LocalBackend implements ApiClient {
         id: existing?.id ?? randomId("key"),
         workspaceId,
         provider: input.provider,
-        maskedKey: trimmed.length > 8 ? `••••${trimmed.slice(-4)}` : "••••",
+        maskedKey: trimmed ? (trimmed.length > 8 ? `••••${trimmed.slice(-4)}` : "••••") : "no key required",
         status: "configured",
         baseUrl: input.baseUrl?.trim() || undefined,
         lastCheckedAt: null,
         note: null,
         updatedAt: nowIso(),
-        secret: trimmed,
+        ...(trimmed ? { secret: trimmed } : {}),
       };
-      if (existing) Object.assign(existing, record);
-      else this.db.providerKeys.push(record);
+      if (existing) {
+        Object.assign(existing, record);
+        // Replacing a key with a keyless configuration must not leave the old
+        // secret behind for the browser to keep serving.
+        if (!trimmed) delete (existing as { secret?: string }).secret;
+      } else {
+        this.db.providerKeys.push(record);
+      }
       this.recordActivity(workspaceId, {
         kind: "provider.connected",
         summary: `${input.provider} key stored`,

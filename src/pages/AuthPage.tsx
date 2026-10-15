@@ -216,22 +216,27 @@ export function AuthPage() {
               loading={busy}
               iconLeft={<Sparkles className="size-3.5" aria-hidden />}
             >
-              {translate("Create a private demo workspace")}
+              {client?.mode === "http"
+                ? translate("Create an account and workspace")
+                : translate("Create a private demo workspace")}
             </Button>
 
             <p className="mt-4 flex items-start gap-2 text-[10px] leading-relaxed text-ink-faint">
               <Lock className="mt-0.5 size-3 shrink-0" aria-hidden />
               <span>
-                {translate("Accounts, documents and keys are stored in this browser profile by the")}{" "}
-                <code className="font-mono text-ink-mute">{client?.mode ?? "local"}</code>{" "}
-                {translate("data layer. A demo account is created with a pre-populated sample workspace you can delete at any time.")}
-                {hasAccount ? null : ` ${translate("Nothing leaves this device.")}`}
+                {client?.mode === "http"
+                  ? translate(
+                      "Accounts and documents live on the platform API. Provider keys are encrypted on the server, never sent to this browser, and every provider call is proxied through the API.",
+                    )
+                  : translate(
+                      "Accounts, documents and keys are stored in this browser profile by the local data layer. A demo account is created with a pre-populated sample workspace you can delete at any time. Nothing leaves this device.",
+                    )}
               </span>
             </p>
           </div>
 
           <p className="mt-4 text-center text-[10px] text-ink-faint">
-            {mode === "sign-in" && !hasAccount
+            {mode === "sign-in" && !hasAccount && client?.mode !== "http"
               ? translate("No account on this device yet — create one to begin.")
               : translate("Prefer to start clean? Create an account and ignore the sample workspace.")}
           </p>

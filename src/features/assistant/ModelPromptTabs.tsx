@@ -1,5 +1,5 @@
 /** Model and system-prompt configuration tabs. */
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, Braces, Cpu, Info } from "lucide-react";
 import {
@@ -37,9 +37,10 @@ export function ModelTab({
   const keyRecord = providerKeys.find(
     (entry) => entry.provider === form.draft.model.provider,
   );
-  const hasCredentials = Boolean(
-    credentials[form.draft.model.provider]?.apiKey,
-  );
+  // A key counts as present when this browser holds one *or* the workspace has
+  // one on the server — the platform API resolves it during a proxied call.
+  const hasCredentials =
+    Boolean(credentials[form.draft.model.provider]?.apiKey) || Boolean(keyRecord);
   const needsKey = Boolean(definition?.requiresKey) && !hasCredentials;
 
   // const modelOptions: SelectOption[] = modelsFor(form.draft.model.provider, "chat").map((option) => ({
@@ -55,7 +56,18 @@ export function ModelTab({
     models: chatModels,
     loading,
     error: modelsError,
+    reload,
+    dynamic,
   } = useChatModels(form.draft.model.provider);
+
+  // A model list that arrives after the provider was switched must not leave
+  // the assistant pointing at an empty or foreign model id.
+  useEffect(() => {
+    if (chatModels.length === 0) return;
+    if (!chatModels.some((option) => option.id === form.draft.model.model)) {
+      form.merge("model", { model: chatModels[0].id });
+    }
+  }, [chatModels, form.draft.model.model, form.merge]);
 
   const modelOptions: SelectOption[] = [
     // اگر مدل ذخیره‌شده در لیست نبود، Select خراب نشود
@@ -126,6 +138,21 @@ export function ModelTab({
                   <span className="text-warn">{modelsError}</span>
                 ) : loading ? (
                   <span>Loading the model list…</span>
+                ) : !form.draft.model.model ? (
+                  <span className="text-warn">
+                    No model selected yet — pick one so queries can generate.
+                  </span>
+                ) : undefined
+              }
+              action={
+                dynamic ? (
+                  <button
+                    type="button"
+                    onClick={() => void reload()}
+                    className="text-2xs text-accent"
+                  >
+                    Refresh models
+                  </button>
                 ) : undefined
               }
             >

@@ -13,6 +13,7 @@
 import { chunkText, estimateTokens } from "./chunker";
 import { queryTerms, searchChunks } from "./vectorStore";
 import { PROVIDER_MAP, ProviderError, chatComplete, providerLabel } from "../api/providers";
+import { isProviderProxyActive } from "../api/providerProxy";
 import { createEmbedder, type Embedder, type EmbedderKeySource } from "../api/embedder";
 import { toneInstruction } from "./tone";
 import { SENTENCE_END } from "./text";
@@ -277,8 +278,12 @@ export async function answerQuestion(input: AnswerInput): Promise<QueryResponse>
 
   const results = retrieval.results;
   const credentials = getCredentials(assistant.model.provider) ?? {};
+  // Generation is possible when this browser holds a key, when the provider
+  // needs none, or when the platform API will resolve the workspace key for us.
   const canGenerate =
-    Boolean(credentials.apiKey) || PROVIDER_MAP[assistant.model.provider]?.requiresKey === false;
+    Boolean(credentials.apiKey) ||
+    PROVIDER_MAP[assistant.model.provider]?.requiresKey === false ||
+    isProviderProxyActive();
 
   let content = "";
   let mode: ResponseMetadata["mode"] = "model";

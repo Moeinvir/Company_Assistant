@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { getApiClient, type ApiClient, type Credentials, type ProfilePatch } from "@/lib/api/client";
+import { setProviderProxySession } from "@/lib/api/providerProxy";
 import type { ProviderId, Session, User, Workspace } from "@/lib/api/types";
 
 const WORKSPACE_KEY = "pyre.workspace.v1";
@@ -95,6 +96,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refreshCredentials();
   }, [refreshCredentials]);
+
+  // Provider calls are proxied through the API whenever there is a session to
+  // authorize them with; both halves (API address, token) must be present.
+  useEffect(() => {
+    if (session && workspace) {
+      setProviderProxySession({ token: session.token, workspaceId: workspace.id });
+    } else {
+      setProviderProxySession(null);
+    }
+  }, [session, workspace]);
 
   const adopt = useCallback((token: Session, list: Workspace[], preferred?: Workspace) => {
     setSession(token);

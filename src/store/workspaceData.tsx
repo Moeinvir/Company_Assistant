@@ -82,7 +82,7 @@ interface WorkspaceDataValue {
   deleteAllDocuments: (knowledgeBaseId: string) => Promise<void>;
   reindexKnowledgeBase: (knowledgeBaseId: string, embedding: EmbeddingConfig) => Promise<void>;
 
-  saveProviderKey: (input: { provider: ProviderId; apiKey: string; baseUrl?: string }) => Promise<void>;
+  saveProviderKey: (input: { provider: ProviderId; apiKey?: string; baseUrl?: string }) => Promise<void>;
   removeProviderKey: (provider: ProviderId) => Promise<void>;
   markProviderVerified: (provider: ProviderId, result: { ok: boolean; message: string }) => Promise<void>;
 
