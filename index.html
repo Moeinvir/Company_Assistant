@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fa" dir="rtl" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#08080b" />
+    <meta
+      name="description"
+      content="Parsis Bridge — forge AI assistants on your own knowledge. Retrieval, evaluation and deployment for teams."
+    />
+    <title>Parsis Bridge — AI intelligence forged in fire</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <script>
+      // Paint the stored fire theme before first render so the accent never
+      // flashes the default temperature. The variable set is written by
+      // FireThemeProvider, which owns the theme table.
+      try {
+        var cached = localStorage.getItem("pyre.fire.vars.v1");
+        if (cached) {
+          var vars = JSON.parse(cached);
+          for (var key in vars) {
+            if (key.indexOf("--") === 0) {
+              document.documentElement.style.setProperty(key, vars[key]);
+            }
+          }
+        }
+      } catch (e) {
+        /* first visit — defaults from globals.css apply */
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Document" ADD COLUMN     "chunkOverlap" INTEGER NOT NULL DEFAULT 150,
+ADD COLUMN     "chunkSize" INTEGER NOT NULL DEFAULT 900,
+ADD COLUMN     "embeddingDimensions" INTEGER NOT NULL DEFAULT 384;

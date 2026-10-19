@@ -1,0 +1,15 @@
+import { PrismaClient } from "@prisma/client";
+const p = new PrismaClient();
+const ws = "cmv91thwr0001wvrgb27v1nya";
+const a = await p.assistant.findFirst({ where: { publicKey: "7429424e-8a63-403d-9fb3-d7cf2b4a4de9" } });
+console.log("RACODE assistant:", JSON.stringify({ id: a.id, status: a.status, model: a.model, embedding: a.embedding, rag: a.rag }, null, 1));
+const bindings = await p.assistantKnowledgeBase.findMany({ where: { assistantId: a.id } });
+console.log("BINDINGS:", JSON.stringify(bindings));
+const kbs = await p.knowledgeBase.findMany({ where: { workspaceId: ws }, select: { id: true, name: true } });
+console.log("KBS:", JSON.stringify(kbs));
+const docs = await p.document.findMany({ where: { workspaceId: ws }, select: { id: true, name: true, status: true, knowledgeBaseId: true, chunkCount: true, error: true } });
+console.log("DOCS:", JSON.stringify(docs, null, 1));
+const perKb = await p.documentChunk.groupBy({ by: ["knowledgeBaseId"], _count: true, where: { workspaceId: ws } });
+console.log("CHUNKS_PER_KB:", JSON.stringify(perKb));
+console.log("TOTAL_CHUNKS_WS:", await p.documentChunk.count({ where: { workspaceId: ws } }));
+await p.$disconnect();
